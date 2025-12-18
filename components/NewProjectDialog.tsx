@@ -29,14 +29,39 @@ const MAX_FILES = 10;
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB in bytes
 const ACCEPTED_FILE_TYPES = ".pdf,.doc,.docx,.txt,.md,.png,.jpg,.jpeg";
 
+interface Question {
+  question: string;
+  options: string[];
+}
+
+const MOCK_QUESTIONS: Question[] = [
+  {
+    question: "What do you mean by X?",
+    options: ["A", "B", "C"],
+  },
+  {
+    question: "What do you mean by Y?",
+    options: ["D", "E", "F"],
+  },
+  {
+    question: "What do you mean by Z?",
+    options: ["G", "H", "I"],
+  },
+];
+
 export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) {
   const [projectPrompt, setProjectPrompt] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
-  const [currentView, setCurrentView] = useState<"initial" | "project-details">("initial");
-  const [selectedOption, setSelectedOption] = useState<string>("");
+  const [currentView, setCurrentView] = useState<"prompt" | "details">("prompt");
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const currentQuestion = MOCK_QUESTIONS[currentQuestionIndex];
+  const isLastQuestion = currentQuestionIndex === MOCK_QUESTIONS.length - 1;
+  const currentAnswer = answers[currentQuestionIndex] || currentQuestion?.options[0] || "";
 
   const validateAndAddFiles = (files: File[]) => {
     // Reset error
@@ -111,28 +136,42 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
     setProjectPrompt("");
     setSelectedFiles([]);
     setFileError("");
-    setCurrentView("initial");
-    setSelectedOption("");
+    setCurrentView("prompt");
+    setCurrentQuestionIndex(0);
+    setAnswers({});
   };
 
   const handleSendClick = () => {
     // Transition to project details view
-    setCurrentView("project-details");
+    setCurrentView("details");
   };
 
-  const handleFinalSubmit = () => {
-    console.log("Starting project with:", {
-      prompt: projectPrompt,
-      files: selectedFiles.map(f => ({
-        name: f.name,
-        size: f.size,
-        type: f.type,
-      })),
-      selectedOption,
-    });
+  const handleNextQuestion = () => {
+    if (isLastQuestion) {
+      // Final submit
+      console.log("Starting project with:", {
+        prompt: projectPrompt,
+        files: selectedFiles.map(f => ({
+          name: f.name,
+          size: f.size,
+          type: f.type,
+        })),
+        answers,
+      });
 
-    resetDialogState();
-    onOpenChange(false);
+      resetDialogState();
+      onOpenChange(false);
+    } else {
+      // Move to next question
+      setCurrentQuestionIndex(prev => prev + 1);
+    }
+  };
+
+  const handleAnswerChange = (value: string) => {
+    setAnswers(prev => ({
+      ...prev,
+      [currentQuestionIndex]: value,
+    }));
   };
 
   return (
@@ -143,8 +182,8 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
         onOpenChange(open);
       }}
     >
-      <DialogContent className={currentView === "initial" ? "pt-12 pb-7 px-6" : ""}>
-        {currentView === "initial" && (
+      <DialogContent className={currentView === "prompt" ? "pt-12 pb-7 px-6" : ""}>
+        {currentView === "prompt" && (
           <>
             <DialogHeader className="mb-1">
               <DialogTitle className="text-2xl font-semibold text-center">What are you working on?</DialogTitle>
@@ -230,7 +269,7 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
             </InputGroup>
           </>
         )}
-        {currentView === "project-details" && (
+        {currentView === "details" && currentQuestion && (
           <>
             <DialogHeader>
               <DialogTitle>
@@ -239,36 +278,32 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm">
-                What do you mean by X?
+                {currentQuestion.question}
               </p>
               <RadioGroup
-                value={selectedOption}
-                onValueChange={setSelectedOption}
+                value={currentAnswer}
+                onValueChange={handleAnswerChange}
                 className="space-y-0.5"
               >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="A" id="option-a" />
-                  <Label htmlFor="option-a" className="cursor-pointer">A</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="B" id="option-b" />
-                  <Label htmlFor="option-b" className="cursor-pointer">B</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="C" id="option-c" />
-                  <Label htmlFor="option-c" className="cursor-pointer">C</Label>
-                </div>
+                {currentQuestion.options.map((option) => (
+                  <div key={option} className="flex items-center space-x-2">
+                    <RadioGroupItem value={option} id={`option-${option.toLowerCase()}`} />
+                    <Label htmlFor={`option-${option.toLowerCase()}`} className="cursor-pointer">
+                      {option}
+                    </Label>
+                  </div>
+                ))}
               </RadioGroup>
             </div>
             <DialogFooter>
               <Button
-                onClick={handleFinalSubmit}
-                disabled={!selectedOption}
+                onClick={handleNextQuestion}
+                disabled={!currentAnswer}
                 size="icon-sm"
                 className="rounded-full"
               >
                 <ArrowRight />
-                <span className="sr-only">Start Project</span>
+                <span className="sr-only">{isLastQuestion ? "Start Project" : "Next Question"}</span>
               </Button>
             </DialogFooter>
           </>
