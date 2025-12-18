@@ -213,6 +213,14 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
                 value={projectPrompt}
                 onChange={(e) => setProjectPrompt(e.target.value)}
                 placeholder="Describe your project..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (projectPrompt.trim()) {
+                      handleSendClick();
+                    }
+                  }
+                }}
               />
               {fileError && (
                 <div className="px-3 pb-2 text-xs text-destructive">
