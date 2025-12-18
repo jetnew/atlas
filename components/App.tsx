@@ -8,23 +8,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import {
   InputGroup,
   InputGroupTextarea,
   InputGroupAddon,
   InputGroupButton,
-  InputGroupText,
 } from "@/components/ui/input-group";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpIcon, Plus as IconPlus, X as XIcon, FileText } from "lucide-react";
 
@@ -40,18 +30,17 @@ function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) {
   const [projectPrompt, setProjectPrompt] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string>("");
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-
+  const validateAndAddFiles = (files: File[]) => {
     // Reset error
     setFileError("");
 
     // Check file count
     if (selectedFiles.length + files.length > MAX_FILES) {
       setFileError(`Maximum ${MAX_FILES} files allowed`);
-      return;
+      return false;
     }
 
     // Validate file types by extension
@@ -62,16 +51,43 @@ function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) {
 
     if (invalidFiles.length > 0) {
       setFileError(`Invalid file type(s): ${invalidFiles.map(f => f.name).join(', ')}`);
-      return;
+      return false;
     }
 
     // Add valid files
     setSelectedFiles(prev => [...prev, ...files]);
+    return true;
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    validateAndAddFiles(files);
 
     // Reset input value to allow re-selecting the same file
     if (e.target) {
       e.target.value = '';
     }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    validateAndAddFiles(files);
   };
 
   const handleRemoveFile = (indexToRemove: number) => {
@@ -100,8 +116,8 @@ function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="pt-12 pb-8 px-6">
-        <DialogHeader>
+      <DialogContent className="pt-12 pb-7 px-6">
+        <DialogHeader className="mb-1">
           <DialogTitle className="text-2xl font-semibold text-center">What are you working on?</DialogTitle>
         </DialogHeader>
         <input
@@ -113,7 +129,18 @@ function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) {
           className="sr-only"
           aria-label="Upload files"
         />
-        <InputGroup>
+        <InputGroup
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className="relative"
+        >
+          {isDragging && (
+            <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 rounded-lg">
+              <FileText className="h-8 w-8 text-muted-foreground" />
+              <div className="text-sm text-muted-foreground">Drop to add to project</div>
+            </div>
+          )}
           <InputGroupTextarea
             value={projectPrompt}
             onChange={(e) => setProjectPrompt(e.target.value)}
