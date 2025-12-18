@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { ArrowUpIcon, Plus as IconPlus, X as XIcon, FileText, ArrowRight } from "lucide-react";
 
 interface NewProjectDialogProps {
@@ -57,6 +58,7 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
   const [currentView, setCurrentView] = useState<"prompt" | "details">("prompt");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [customInputs, setCustomInputs] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentQuestion = MOCK_QUESTIONS[currentQuestionIndex];
@@ -139,6 +141,7 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
     setCurrentView("prompt");
     setCurrentQuestionIndex(0);
     setAnswers({});
+    setCustomInputs({});
   };
 
   const handleSendClick = () => {
@@ -148,6 +151,12 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
 
   const handleNextQuestion = () => {
     if (isLastQuestion) {
+      // Compile final answers with custom inputs
+      const finalAnswers = Object.entries(answers).reduce((acc, [index, answer]) => {
+        acc[index] = answer === "__custom__" ? customInputs[index] || "" : answer;
+        return acc;
+      }, {} as Record<string, string>);
+
       // Final submit
       console.log("Starting project with:", {
         prompt: projectPrompt,
@@ -156,7 +165,7 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
           size: f.size,
           type: f.type,
         })),
-        answers,
+        answers: finalAnswers,
       });
 
       resetDialogState();
@@ -301,12 +310,29 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
                     </Label>
                   </div>
                 ))}
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="__custom__" id="option-custom" />
+                  {/* <Label htmlFor="option-custom">Other:</Label> */}
+                  <Input
+                    value={customInputs[currentQuestionIndex] || ""}
+                    onChange={(e) => {
+                      setCustomInputs(prev => ({
+                        ...prev,
+                        [currentQuestionIndex]: e.target.value
+                      }));
+                      handleAnswerChange("__custom__");
+                    }}
+                    onFocus={() => handleAnswerChange("__custom__")}
+                    placeholder="Something else..."
+                    className="flex-1 h-7 -my-2 border-none shadow-none focus-visible:border-none focus-visible:ring-0 px-0"
+                  />
+                </div>
               </RadioGroup>
             </div>
             <DialogFooter>
               <Button
                 onClick={handleNextQuestion}
-                disabled={!currentAnswer}
+                disabled={!currentAnswer || (currentAnswer === "__custom__" && !customInputs[currentQuestionIndex]?.trim())}
                 size="icon-sm"
                 className="rounded-full"
               >
