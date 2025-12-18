@@ -32,7 +32,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/oauth?next=/`,
+          redirectTo: `${window.location.origin}/oauth?next=/`,
         },
       })
 
@@ -134,7 +134,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
                   <Link
-                    href="/auth/forgot-password"
+                    href="/forgot-password"
                     className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                   >
                     Forgot your password?
@@ -155,7 +155,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
             </div>
             <div className="mt-4 text-center text-sm">
               Don&apos;t have an account?{' '}
-              <Link href="/auth/sign-up" className="underline underline-offset-4">
+              <Link href="/sign-up" className="underline underline-offset-4">
                 Sign up
               </Link>
             </div>
