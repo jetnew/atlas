@@ -24,6 +24,7 @@ interface NewProjectDialogProps {
 }
 
 const MAX_FILES = 10;
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB in bytes
 const ACCEPTED_FILE_TYPES = ".pdf,.doc,.docx,.txt,.md,.png,.jpg,.jpeg";
 
 function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) {
@@ -40,6 +41,13 @@ function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) {
     // Check file count
     if (selectedFiles.length + files.length > MAX_FILES) {
       setFileError(`Maximum ${MAX_FILES} files allowed`);
+      return false;
+    }
+
+    // Validate file size
+    const oversizedFiles = files.filter(file => file.size > MAX_FILE_SIZE);
+    if (oversizedFiles.length > 0) {
+      setFileError(`File(s) exceed 50 MB limit: ${oversizedFiles.map(f => f.name).join(', ')}`);
       return false;
     }
 
