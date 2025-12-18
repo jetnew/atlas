@@ -1,0 +1,27 @@
+{
+  "name": "atlas",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "next": "16.0.10",
+    "react": "19.2.1",
+    "react-dom": "19.2.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.10",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@10.19.1-oidc-test.3+sha512.e5961a4b56bb37620f97b65da4ca56216634bf39ed358eda925f0f036534d458fa249d93ed0021410523f8bb7ed8512b61fe5532ed3e81777793366c6be026b5"
+}
