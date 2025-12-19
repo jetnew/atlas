@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ArrowUpIcon, Plus as IconPlus, X as XIcon, FileText, ArrowRight, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { uploadFileToStorage, generateStoragePath } from "@/lib/supabase/storage";
 
 interface NewProjectDialogProps {
   open: boolean;
@@ -48,6 +51,9 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [projectCreationError, setProjectCreationError] = useState<string | null>(null);
+  const router = useRouter();
 
   const currentQuestion = questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
@@ -122,6 +128,88 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
     setFileError("");
   };
 
+  const createProject = async () => {
+    setProjectCreationError(null);
+    setIsCreatingProject(true);
+
+    try {
+      const supabase = createClient();
+
+      // Step 1: Get authenticated user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error("You must be logged in to create a project");
+      }
+
+      const userId = user.id;
+
+      // Step 2: Create project record (only prompt, no answers)
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          user_id: userId,
+          prompt: projectPrompt,
+        })
+        .select()
+        .single();
+
+      if (projectError || !projectData) {
+        console.error("Project creation error:", projectError);
+        throw new Error("Failed to create project. Please try again.");
+      }
+
+      const projectId = projectData.id;
+
+      // Step 3: Upload files in parallel (if any)
+      if (selectedFiles.length > 0) {
+        const uploadPromises = selectedFiles.map(async (file) => {
+          const storagePath = generateStoragePath(userId, projectId, file.name);
+
+          // Upload to storage
+          const uploadResult = await uploadFileToStorage(file, storagePath);
+          if (!uploadResult.success) {
+            console.error(`Failed to upload ${file.name}:`, uploadResult.error);
+            return null; // Continue with other files
+          }
+
+          // Create source record
+          const { error: sourceError } = await supabase
+            .from('sources')
+            .insert({
+              user_id: userId,
+              name: file.name,
+              project_id: projectId,
+              storage_path: storagePath,
+            });
+
+          if (sourceError) {
+            console.error(`Failed to create source for ${file.name}:`, sourceError);
+            return null; // Continue with other files
+          }
+
+          return storagePath;
+        });
+
+        await Promise.all(uploadPromises);
+      }
+
+      // Step 4: Navigate to project page
+      resetDialogState();
+      onOpenChange(false);
+      router.push(`/p/${projectId}`);
+
+    } catch (error) {
+      console.error("Error creating project:", error);
+      setProjectCreationError(
+        error instanceof Error
+          ? error.message
+          : "Failed to create project. Please try again."
+      );
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+
   const resetDialogState = () => {
     setProjectPrompt("");
     setSelectedFiles([]);
@@ -133,6 +221,8 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
     setQuestions([]);
     setApiError(null);
     setIsLoadingQuestions(false);
+    setIsCreatingProject(false);
+    setProjectCreationError(null);
   };
 
   const handleSendClick = async () => {
@@ -376,14 +466,33 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
               </RadioGroup>
             </div>
             <DialogFooter>
+              {projectCreationError && (
+                <div className="text-xs text-destructive mb-2 w-full text-left">
+                  {projectCreationError}
+                </div>
+              )}
               <Button
-                onClick={handleNextQuestion}
-                disabled={!currentAnswer || (currentAnswer === "__custom__" && !customInputs[currentQuestionIndex]?.trim())}
+                onClick={isLastQuestion ? createProject : handleNextQuestion}
+                disabled={
+                  !currentAnswer ||
+                  (currentAnswer === "__custom__" && !customInputs[currentQuestionIndex]?.trim()) ||
+                  isCreatingProject
+                }
                 size="icon-sm"
                 className="rounded-full"
               >
-                <ArrowRight />
-                <span className="sr-only">{isLastQuestion ? "Start Project" : "Next Question"}</span>
+                {isCreatingProject ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <ArrowRight />
+                )}
+                <span className="sr-only">
+                  {isCreatingProject
+                    ? "Creating project..."
+                    : isLastQuestion
+                    ? "Start Project"
+                    : "Next Question"}
+                </span>
               </Button>
             </DialogFooter>
           </>

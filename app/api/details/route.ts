@@ -43,20 +43,25 @@ ${summariesText}`,
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("Received request");
     const formData = await request.formData();
     const prompt = formData.get("prompt") as string;
     const files = formData.getAll("files") as File[];
 
+    
+    console.log("Extracting text")
     // Extract text from files in parallel
     const extractedTexts: string[] = (await Promise.all(
       files.map(file => extractText(file))
     )).filter(text => text.length > 0);
 
+    console.log("Generating summaries")
     // Generate summaries from extracted texts in parallel
     const summaries: string[] = await Promise.all(
       extractedTexts.map(text => generateSummary(text))
     );
 
+    console.log("Generating questions")
     // Generate clarification questions using AI
     const questions = await generateQuestions(prompt, summaries);
 
