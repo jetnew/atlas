@@ -3,6 +3,10 @@ export interface Project {
   user_id: string;
   prompt: string;
   created_at: string;
+  report_content: string | null;
+  report_status: 'pending' | 'generating' | 'completed' | 'failed' | null;
+  report_error: string | null;
+  report_generated_at: string | null;
 }
 
 export interface Source {
