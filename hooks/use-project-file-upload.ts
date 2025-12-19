@@ -32,12 +32,6 @@ export function useProjectFileUpload({
    * Upload a file to storage and create a source record
    */
   const uploadFile = useCallback(async (file: File): Promise<boolean> => {
-    // Check if projectId is valid
-    if (!projectId) {
-      console.error('No project ID available');
-      return false;
-    }
-
     const supabase = createClient();
 
     // Get current user
@@ -146,12 +140,6 @@ export function useProjectFileUpload({
    * Delete a file from storage and remove source record
    */
   const deleteFile = useCallback(async (fileId: string): Promise<boolean> => {
-    // Check if projectId is valid
-    if (!projectId) {
-      console.error('No project ID available');
-      return false;
-    }
-
     const supabase = createClient();
 
     // Find the file in state
@@ -189,7 +177,7 @@ export function useProjectFileUpload({
       console.error('Unexpected delete error:', error);
       return false;
     }
-  }, [projectId, uploadedFiles]);
+  }, [uploadedFiles]);
 
   return {
     uploadedFiles,

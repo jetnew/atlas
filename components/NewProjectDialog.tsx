@@ -19,9 +19,7 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ArrowUpIcon, Plus as IconPlus, X as XIcon, FileText, ArrowRight } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { useProjectFileUpload } from "@/hooks/use-project-file-upload";
+import { ArrowUpIcon, Plus as IconPlus, X as XIcon, FileText, ArrowRight, Loader2 } from "lucide-react";
 
 interface NewProjectDialogProps {
   open: boolean;
@@ -37,92 +35,30 @@ interface Question {
   options: string[];
 }
 
-const MOCK_QUESTIONS: Question[] = [
-  {
-    question: "What do you mean by X?",
-    options: ["A", "B", "C"],
-  },
-  {
-    question: "What do you mean by Y?",
-    options: ["D", "E", "F"],
-  },
-  {
-    question: "What do you mean by Z?",
-    options: ["G", "H", "I"],
-  },
-];
-
 export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) {
   const [projectPrompt, setProjectPrompt] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
   const [currentView, setCurrentView] = useState<"prompt" | "details">("prompt");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [customInputs, setCustomInputs] = useState<Record<string, string>>({});
-  const [projectId, setProjectId] = useState<string | null>(null);
-  const [isCreatingProject, setIsCreatingProject] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  // Use the custom hook for file uploads (always call the hook, even if projectId is null)
-  // This follows React's Rules of Hooks - hooks must be called unconditionally
-  const fileUpload = useProjectFileUpload({ projectId: projectId || '' });
-
-  const currentQuestion = MOCK_QUESTIONS[currentQuestionIndex];
-  const isLastQuestion = currentQuestionIndex === MOCK_QUESTIONS.length - 1;
+  const currentQuestion = questions[currentQuestionIndex];
+  const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const currentAnswer = answers[currentQuestionIndex] || currentQuestion?.options[0] || "";
 
-  // Create project when dialog opens
-  useEffect(() => {
-    if (!open || projectId) return;
-
-    const createProject = async () => {
-      setIsCreatingProject(true);
-      const supabase = createClient();
-
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.error('User not authenticated');
-        setIsCreatingProject(false);
-        return;
-      }
-
-      // Create project with empty prompt initially
-      const { data, error } = await supabase
-        .from('projects')
-        .insert({
-          user_id: user.id,
-          prompt: '', // Will be updated when user submits
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Failed to create project:', error);
-        setIsCreatingProject(false);
-        return;
-      }
-
-      setProjectId(data.id);
-      setIsCreatingProject(false);
-    };
-
-    createProject();
-  }, [open, projectId]);
-
-  const validateAndAddFiles = async (files: File[]) => {
+  const validateAndAddFiles = (files: File[]) => {
     // Reset error
     setFileError("");
 
-    // Check if project is ready
-    if (!projectId) {
-      setFileError("Project not ready. Please wait...");
-      return false;
-    }
-
-    // Check file count (now checking against uploaded files from hook)
-    if (fileUpload.uploadedFiles.length + files.length > MAX_FILES) {
+    // Check file count
+    if (selectedFiles.length + files.length > MAX_FILES) {
       setFileError(`Maximum ${MAX_FILES} files allowed`);
       return false;
     }
@@ -145,23 +81,14 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
       return false;
     }
 
-    // Upload files immediately
-    const uploadPromises = files.map(file => fileUpload.uploadFile(file));
-    const results = await Promise.all(uploadPromises);
-
-    // Check if any uploads failed
-    const failedCount = results.filter(r => !r).length;
-    if (failedCount > 0) {
-      setFileError(`${failedCount} file(s) failed to upload`);
-      return false;
-    }
-
+    // Add valid files
+    setSelectedFiles(prev => [...prev, ...files]);
     return true;
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    await validateAndAddFiles(files);
+    validateAndAddFiles(files);
 
     // Reset input value to allow re-selecting the same file
     if (e.target) {
@@ -181,91 +108,102 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
     setIsDragging(false);
   };
 
-  const handleDrop = async (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
 
     const files = Array.from(e.dataTransfer.files);
-    await validateAndAddFiles(files);
+    validateAndAddFiles(files);
   };
 
-  const handleRemoveFile = async (fileId: string) => {
-    const success = await fileUpload.deleteFile(fileId);
-    if (!success) {
-      setFileError("Failed to remove file");
-    } else {
-      setFileError("");
-    }
+  const handleRemoveFile = (indexToRemove: number) => {
+    setSelectedFiles(prev => prev.filter((_, index) => index !== indexToRemove));
+    setFileError("");
   };
 
   const resetDialogState = () => {
     setProjectPrompt("");
+    setSelectedFiles([]);
     setFileError("");
     setCurrentView("prompt");
     setCurrentQuestionIndex(0);
     setAnswers({});
     setCustomInputs({});
+    setQuestions([]);
+    setApiError(null);
+    setIsLoadingQuestions(false);
   };
 
-  const handleDialogClose = async (isOpen: boolean) => {
-    if (!isOpen && projectId) {
-      // User closed dialog without completing
-      const supabase = createClient();
+  const handleSendClick = async () => {
+    // Reset any previous errors
+    setApiError(null);
+    setIsLoadingQuestions(true);
 
-      // Delete all files
-      if (fileUpload.uploadedFiles.length > 0) {
-        await Promise.all(
-          fileUpload.uploadedFiles.map(f => fileUpload.deleteFile(f.id))
-        );
+    try {
+      // Prepare FormData
+      const formData = new FormData();
+      formData.append("prompt", projectPrompt);
+
+      // Append all files
+      selectedFiles.forEach((file) => {
+        formData.append("files", file);
+      });
+
+      // Make API call
+      const response = await fetch("/api/details", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch questions: ${response.status}`);
       }
 
-      // Delete project (CASCADE will delete any remaining sources)
-      await supabase.from('projects').delete().eq('id', projectId);
+      const data = await response.json();
 
-      // Reset state
-      resetDialogState();
-      setProjectId(null);
+      // Validate response structure
+      if (!data.questions || !Array.isArray(data.questions)) {
+        throw new Error("Invalid response format from server");
+      }
+
+      // Update questions state with API response
+      setQuestions(data.questions);
+
+      // Transition to details view
+      setCurrentView("details");
+    } catch (error) {
+      console.error("Error fetching project details:", error);
+      setApiError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load project details. Please try again."
+      );
+    } finally {
+      setIsLoadingQuestions(false);
     }
-
-    onOpenChange(isOpen);
   };
 
-  const handleSendClick = () => {
-    // Transition to project details view
-    setCurrentView("details");
-  };
-
-  const handleNextQuestion = async () => {
+  const handleNextQuestion = () => {
     if (isLastQuestion) {
-      const supabase = createClient();
-
       // Compile final answers with custom inputs
       const finalAnswers = Object.entries(answers).reduce((acc, [index, answer]) => {
         acc[index] = answer === "__custom__" ? customInputs[index] || "" : answer;
         return acc;
       }, {} as Record<string, string>);
 
-      // Update project with final prompt
-      if (projectId) {
-        await supabase
-          .from('projects')
-          .update({
-            prompt: projectPrompt,
-          })
-          .eq('id', projectId);
-      }
-
       // Final submit
       console.log("Starting project with:", {
-        projectId,
         prompt: projectPrompt,
-        files: fileUpload.uploadedFiles,
+        files: selectedFiles.map(f => ({
+          name: f.name,
+          size: f.size,
+          type: f.type,
+        })),
         answers: finalAnswers,
       });
 
       resetDialogState();
-      setProjectId(null); // Keep the project, don't delete
       onOpenChange(false);
     } else {
       // Move to next question
@@ -283,7 +221,10 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
   return (
     <Dialog
       open={open}
-      onOpenChange={handleDialogClose}
+      onOpenChange={(open) => {
+        if (!open) resetDialogState();
+        onOpenChange(open);
+      }}
     >
       <DialogContent className={currentView === "prompt" ? "pt-12 pb-7 px-6" : ""}>
         {currentView === "prompt" && (
@@ -330,9 +271,9 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
                   {fileError}
                 </div>
               )}
-              {isCreatingProject && (
-                <div className="px-3 pb-2 text-xs text-muted-foreground">
-                  Creating project...
+              {apiError && (
+                <div className="px-3 pb-2 text-xs text-destructive">
+                  {apiError}
                 </div>
               )}
               <InputGroupAddon align="block-end" className="justify-between w-full">
@@ -347,33 +288,24 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
                     <IconPlus />
                     <span className="sr-only">Upload files</span>
                   </InputGroupButton>
-                  {fileUpload.uploadedFiles.length > 0 && (
+                  {selectedFiles.length > 0 && (
                     <div className="flex gap-1 items-center overflow-x-auto scrollbar-hide">
-                      {fileUpload.uploadedFiles.map((fileInfo) => (
+                      {selectedFiles.map((file, index) => (
                         <Badge
-                          key={fileInfo.id}
+                          key={`${file.name}-${index}`}
                           variant="secondary"
-                          className={`pl-2 pr-2 group/badge cursor-pointer shrink-0 ${
-                            fileInfo.status === 'uploading' ? 'opacity-50' : ''
-                          } ${
-                            fileInfo.status === 'error' ? 'border-destructive' : ''
-                          }`}
+                          className="pl-2 pr-2 group/badge cursor-pointer shrink-0"
                         >
                           <FileText className="group-hover/badge:hidden" />
                           <button
                             type="button"
-                            onClick={() => handleRemoveFile(fileInfo.id)}
+                            onClick={() => handleRemoveFile(index)}
                             className="hidden group-hover/badge:block cursor-pointer"
-                            aria-label={`Remove ${fileInfo.name}`}
-                            disabled={fileInfo.status === 'uploading'}
+                            aria-label={`Remove ${file.name}`}
                           >
                             <XIcon className="h-3 w-3" />
                           </button>
-                          <span className="truncate max-w-[120px]">
-                            {fileInfo.name}
-                            {fileInfo.status === 'uploading' && ' (uploading...)'}
-                            {fileInfo.status === 'error' && ' (error)'}
-                          </span>
+                          <span className="truncate max-w-[120px]">{file.name}</span>
                         </Badge>
                       ))}
                     </div>
@@ -383,12 +315,18 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
                   variant="default"
                   className="rounded-full shrink-0"
                   size="icon-xs"
-                  disabled={!projectPrompt.trim()}
+                  disabled={!projectPrompt.trim() || isLoadingQuestions}
                   onClick={handleSendClick}
                   type="button"
                 >
-                  <ArrowUpIcon />
-                  <span className="sr-only">Send</span>
+                  {isLoadingQuestions ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <ArrowUpIcon />
+                  )}
+                  <span className="sr-only">
+                    {isLoadingQuestions ? "Loading..." : "Send"}
+                  </span>
                 </InputGroupButton>
               </InputGroupAddon>
             </InputGroup>
