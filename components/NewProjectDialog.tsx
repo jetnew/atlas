@@ -490,8 +490,8 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
                   {isCreatingProject
                     ? "Creating project..."
                     : isLastQuestion
-                    ? "Start Project"
-                    : "Next Question"}
+                      ? "Start Project"
+                      : "Next Question"}
                 </span>
               </Button>
             </DialogFooter>
