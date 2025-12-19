@@ -1,24 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-
-interface Question {
-  question: string;
-  options: string[];
-}
-
-const MOCK_QUESTIONS: Question[] = [
-  {
-    question: "What do you mean by X?",
-    options: ["A", "B", "C"],
-  },
-  {
-    question: "What do you mean by Y?",
-    options: ["D", "E", "F"],
-  },
-  {
-    question: "What do you mean by Z?",
-    options: ["G", "H", "I"],
-  },
-];
+import { generateObject } from 'ai';
+import { openai } from "@ai-sdk/openai";
+import { z } from 'zod';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,8 +13,21 @@ export async function POST(request: NextRequest) {
     console.log("Received prompt:", prompt);
     console.log("Received files:", files.map(f => ({ name: f.name, size: f.size, type: f.type })));
 
-    // For now, return the mock questions
-    return NextResponse.json({ questions: MOCK_QUESTIONS });
+    // Generate clarification questions using AI
+    const { object } = await generateObject({
+      model: openai("gpt-4o"),
+      schema: z.object({
+        questions: z.array(z.object({
+          question: z.string(),
+          options: z.array(z.string()),
+        })),
+      }),
+      prompt: `Given the following user request, generate 3-5 clarification questions to better understand their requirements. Each question should have 3-4 possible options as answers.
+
+User request: ${prompt}`,
+    });
+
+    return NextResponse.json({ questions: object.questions });
   } catch (error) {
     console.error("Error in /api/details:", error);
     return NextResponse.json(
