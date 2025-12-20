@@ -6,6 +6,7 @@ import { Streamdown } from "streamdown";
 import { Card, CardContent } from "@/components/ui/card";
 import { useProject } from "@/components/ProjectContext";
 import { reportSchema, Report as ReportType } from "@/lib/schemas/report";
+import { formatReport } from "@/lib/formatReport";
 
 interface ReportProps {
   projectId: string;
@@ -52,55 +53,12 @@ export default function Report({ projectId }: ReportProps) {
     return null;
   }
 
-  // Convert report object to formatted string
-  const formatReport = () => {
-    if (!displayReport?.report) return '';
-
-    const title = displayReport.report.title
-      ? (displayReport.report.title.startsWith('#') ? displayReport.report.title : `# ${displayReport.report.title}`)
-      : '';
-
-    const sections = displayReport.report.sections?.map((item) => {
-      if (!item?.section) return '';
-
-      const section = item.section;
-      const sectionHeading = section.heading
-        ? (section.heading.startsWith('#') ? section.heading : `## ${section.heading}`)
-        : '';
-      const sectionText = [sectionHeading, section.text].filter(Boolean).join('\n\n');
-
-      const contentText = section.content?.map((contentItem) => {
-        if (!contentItem?.subsection) return '';
-
-        const subsection = contentItem.subsection;
-        const subsectionHeading = subsection.subheading
-          ? (subsection.subheading.startsWith('#') ? subsection.subheading : `### ${subsection.subheading}`)
-          : '';
-        const subsectionText = [subsectionHeading, subsection.text].filter(Boolean).join('\n\n');
-
-        const subsubsectionText = subsection.subsubsection?.map((subsubItem) => {
-          if (!subsubItem) return '';
-          const subsubHeading = subsubItem.subsubheading
-            ? (subsubItem.subsubheading.startsWith('#') ? subsubItem.subsubheading : `#### ${subsubItem.subsubheading}`)
-            : '';
-          return [subsubHeading, subsubItem.text].filter(Boolean).join('\n\n');
-        }).join('\n\n') || '';
-
-        return [subsectionText, subsubsectionText].filter(Boolean).join('\n\n');
-      }).join('\n\n') || '';
-
-      return [sectionText, contentText].filter(Boolean).join('\n\n');
-    }).join('\n\n') || '';
-
-    return [title, sections].filter(Boolean).join('\n\n');
-  };
-
   return (
     <Card className="h-full flex flex-col overflow-hidden">
       <CardContent className="flex-1 overflow-auto p-6 flex justify-center">
         <div className="w-full max-w-3xl">
           <Streamdown isAnimating={isGenerating}>
-            {formatReport()}
+            {formatReport(displayReport)}
           </Streamdown>
         </div>
       </CardContent>
