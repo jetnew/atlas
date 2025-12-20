@@ -165,6 +165,9 @@ export default function Map({ report }: MapProps) {
         fitView
         minZoom={0.1}
         maxZoom={1.5}
+        proOptions={{
+          hideAttribution: true,
+        }}
       >
         <Background />
       </ReactFlow>

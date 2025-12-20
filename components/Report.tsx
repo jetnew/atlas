@@ -58,7 +58,7 @@ export default function Report({ projectId }: ReportProps) {
   }
 
   return (
-    <Card className="h-full flex flex-col overflow-hidden relative">
+    <Card className="h-full flex flex-col overflow-hidden relative p-0">
       <Button
         variant="ghost"
         size="icon"
@@ -67,11 +67,11 @@ export default function Report({ projectId }: ReportProps) {
       >
         {isMapView ? <NotebookText className="h-4 w-4" /> : <Map className="h-4 w-4" />}
       </Button>
-      <CardContent className="flex-1 overflow-auto p-6 flex justify-center">
+      <CardContent className="flex-1 overflow-auto flex justify-center p-0">
         {isMapView ? (
           <MapView report={displayReport} />
         ) : (
-          <div className="w-full max-w-3xl">
+          <div className="w-full max-w-3xl p-6">
             <Streamdown isAnimating={isGenerating}>
               {formatReport(displayReport)}
             </Streamdown>
