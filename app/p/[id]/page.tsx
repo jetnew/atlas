@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Header from "@/components/Header";
 import { useProject } from "@/components/ProjectContext";
@@ -12,6 +12,7 @@ export default function ProjectPage() {
   const params = useParams();
   const id = params.id as string;
   const { isLoading, error, getProjectData, currentProject } = useProject();
+  const reportGeneratedRef = useRef(false);
 
   const { completion: report, complete: generateReport, isLoading: isGenerating } = useCompletion({
     api: '/api/report',
@@ -24,7 +25,8 @@ export default function ProjectPage() {
   }, [id, getProjectData]);
 
   useEffect(() => {
-    if (currentProject && !currentProject.report) {
+    if (currentProject && !currentProject.report && !reportGeneratedRef.current) {
+      reportGeneratedRef.current = true;
       generateReport("", {
         body: {
           projectId: id,
