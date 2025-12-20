@@ -8,7 +8,7 @@ import { ProjectProvider, useProject } from "@/components/ProjectContext";
 import { Project } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { EllipsisVertical, Plus } from "lucide-react";
+import { Ellipsis, Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,7 +53,7 @@ function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <>
-      <Card className="cursor-pointer hover:shadow-lg transition-shadow w-64 h-48 flex flex-col relative">
+      <Card className="cursor-pointer hover:shadow-lg transition-shadow w-64 h-48 flex flex-col relative group">
         <Link href={`/p/${project.id}`} className="flex flex-col h-full">
           <CardHeader className="pb-2">
             <CardTitle className="line-clamp-2 leading-relaxed pb-1 pr-8">{project.prompt}</CardTitle>
@@ -75,8 +75,8 @@ function ProjectCard({ project }: ProjectCardProps) {
         <div className="absolute top-2 right-2" onClick={(e) => e.preventDefault()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <EllipsisVertical className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Ellipsis className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -125,14 +125,14 @@ function AppContent() {
   return (
     <div className="min-h-screen">
       <Header />
-      <main className="container mx-auto px-4 py-8">
-        <Button
-          onClick={() => setIsDialogOpen(true)}
-          className="mb-4"
-        >
-          <Plus className="h-4 w-4" />
-          New Project
-        </Button>
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold">Projects</h1>
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New Project
+          </Button>
+        </div>
         <div className="flex flex-wrap gap-2">
           {projects.map((project) => (
             <ProjectCard
