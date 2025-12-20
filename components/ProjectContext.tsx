@@ -10,6 +10,7 @@ interface ProjectContextType {
     projects: Project[];
     isLoading: boolean;
     error: string | null;
+    report: string | null;
     createProject: (
         prompt: string,
         files: File[],
@@ -287,6 +288,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
                 projects,
                 isLoading,
                 error,
+                report: currentProject?.report || null,
                 createProject,
                 getProjectData,
                 listProjects,

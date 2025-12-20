@@ -4,21 +4,33 @@ import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import Header from "@/components/Header";
 import { useProject } from "@/components/ProjectContext";
+import { useCompletion } from "@ai-sdk/react";
+import { Streamdown } from "streamdown";
 
 export default function ProjectPage() {
   const params = useParams();
   const id = params.id as string;
-  const { currentProject, getProjectData, isLoading, error } = useProject();
+  const { isLoading, error, getProjectData, currentProject } = useProject();
+
+  const { completion: report, complete: generateReport, isLoading: isGenerating } = useCompletion({
+    api: '/api/report',
+  })
 
   useEffect(() => {
     if (id) {
-      getProjectData(id).catch((err) => {
-        console.error('Error fetching project data:', err);
-      });
+      getProjectData(id);
     }
   }, [id, getProjectData]);
 
-  const report = currentProject?.report || "";
+  useEffect(() => {
+    if (currentProject && !currentProject.report) {
+      generateReport("", {
+        body: {
+          projectId: id,
+        }
+      });
+    }
+  }, [currentProject, id, generateReport]);
 
   return (
     <div className="h-screen flex flex-col">
@@ -28,9 +40,9 @@ export default function ProjectPage() {
           {isLoading && <div>Loading...</div>}
           {error && <div className="text-destructive">Error: {error}</div>}
           {!isLoading && !error && (
-            <div className="prose prose-sm max-w-none dark:prose-invert">
-              <div className="whitespace-pre-wrap">{report}</div>
-            </div>
+            <Streamdown isAnimating={isGenerating}>
+              {currentProject?.report || report}
+            </Streamdown>
           )}
         </div>
       </div>

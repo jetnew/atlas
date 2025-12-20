@@ -19,16 +19,15 @@ async function generateReport(
       ).join('\n\n')}`
     : '';
 
-  const systemPrompt = `You are a research assistant generating comprehensive reports. Create a detailed report based on the user's prompt, source materials, and clarifications.
+  const systemPrompt = `You are a deep research assistant, tasked to generate a comprehensive report on the user's project. You are given the user's prompt, the summaries of the sources attached by the user for the project, and the clarifications (questions and answers) to the user's prompt. Your goal is to generate a comprehensive, detailed, in-depth report on the user's project, highlighting key insights and details. Structure the report into an organized structure, formatting the report with # for project title, ## 1. for headings, ### 1.1. for sub-headings, #### 1.1.1. for sub-sub-headings, etc.. Your report must include in-line citations, formatted using "[1]", "[2]", "[3]" etc., and bibliography at the end of the report.
 
-Structure:
-1. Executive Summary
-2. Key Findings
-3. Detailed Analysis
-4. Recommendations
-5. Conclusion
+User prompt: ${prompt}
 
-User prompt: ${prompt}${summariesText}${qaContext}`;
+Project sources (summaries):
+${summariesText}
+
+Clarification questions and answers:
+${qaContext}`;
 
   return streamText({
     model: openai('gpt-5.2'),
@@ -39,8 +38,7 @@ User prompt: ${prompt}${summariesText}${qaContext}`;
 export async function POST(request: NextRequest) {
   try {
     console.log("Received report generation request");
-    const formData = await request.formData();
-    const projectId = formData.get('projectId') as string;
+    const { projectId }: {prompt: string, projectId: string} = await request.json()
 
     if (!projectId) {
       return NextResponse.json(
@@ -91,7 +89,24 @@ export async function POST(request: NextRequest) {
     console.log("Starting report generation");
     const result = await generateReport(project.prompt, summaries, questions, answers);
 
-    return result.toUIMessageStreamResponse();
+    return result.toUIMessageStreamResponse({
+      onFinish: async ({ responseMessage }) => {
+        console.log("Report generation finished");
+
+        const report = responseMessage.parts.filter(
+          (part): part is { type: 'text'; text: string } => part.type === 'text'
+        ).map(part => part.text).join('');
+
+        const { error } = await supabase
+          .from('projects')
+          .update({ report })
+          .eq('id', projectId);
+
+        if (error) {
+          console.error("Error updating project:", error);
+        }
+      },
+    });
 
   } catch (error) {
     console.error('Error in /api/report:', error);
