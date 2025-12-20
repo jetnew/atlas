@@ -136,7 +136,7 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
     try {
       // Compile final answers with custom inputs
       const finalAnswers = Object.entries(answers).reduce((acc, [index, answer]) => {
-        acc[index] = answer === "__custom__" ? customInputs[index] || "" : answer;
+        acc[index] = answer === "custom" ? customInputs[index] || "" : answer;
         return acc;
       }, {} as Record<string, string>);
 
@@ -248,7 +248,7 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
     if (isLastQuestion) {
       // Compile final answers with custom inputs
       const finalAnswers = Object.entries(answers).reduce((acc, [index, answer]) => {
-        acc[index] = answer === "__custom__" ? customInputs[index] || "" : answer;
+        acc[index] = answer === "custom" ? customInputs[index] || "" : answer;
         return acc;
       }, {} as Record<string, string>);
 
@@ -417,7 +417,7 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
                   </div>
                 ))}
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="__custom__" id="option-custom" />
+                  <RadioGroupItem value="custom" id="option-custom" />
                   {/* <Label htmlFor="option-custom">Other:</Label> */}
                   <Input
                     value={customInputs[currentQuestionIndex] || ""}
@@ -426,9 +426,9 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
                         ...prev,
                         [currentQuestionIndex]: e.target.value
                       }));
-                      handleAnswerChange("__custom__");
+                      handleAnswerChange("custom");
                     }}
-                    onFocus={() => handleAnswerChange("__custom__")}
+                    onFocus={() => handleAnswerChange("custom")}
                     placeholder="Something else..."
                     className="flex-1 h-7 -my-2 border-none shadow-none focus-visible:border-none focus-visible:ring-0 px-0"
                   />
@@ -445,7 +445,7 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
                 onClick={isLastQuestion ? handleCreateProject : handleNextQuestion}
                 disabled={
                   !currentAnswer ||
-                  (currentAnswer === "__custom__" && !customInputs[currentQuestionIndex]?.trim()) ||
+                  (currentAnswer === "custom" && !customInputs[currentQuestionIndex]?.trim()) ||
                   isCreatingProject
                 }
                 size="icon-sm"
