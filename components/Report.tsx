@@ -18,7 +18,7 @@ interface ReportProps {
 export default function Report({ projectId }: ReportProps) {
   const { isLoading, error, getProjectData, currentProject } = useProject();
   const reportGeneratedRef = useRef(false);
-  const [isMapView, setIsMapView] = useState(false);
+  const [isMapView, setIsMapView] = useState(true);
 
   const { object: streamedReport, submit: generateReport, isLoading: isGenerating } = useObject({
     api: '/api/report',
