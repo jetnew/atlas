@@ -16,7 +16,7 @@ interface ProjectContextType {
         files: File[],
         questions: Question[],
         answers: Record<string, string>,
-        summaries: Record<string, string | null>
+        summaries: string[]
     ) => Promise<string | null>;
     getProjectData: (id: string) => Promise<void>;
     listProjects: () => Promise<void>;
@@ -91,7 +91,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
             files: File[],
             questions: Question[],
             answers: Record<string, string>,
-            summaries: Record<string, string | null>
+            summaries: string[]
         ): Promise<string | null> => {
             setError(null);
             setIsLoading(true);
@@ -128,7 +128,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
                 // Step 3: Upload files in parallel (if any)
                 if (files.length > 0) {
-                    const uploadPromises = files.map(async (file) => {
+                    const uploadPromises = files.map(async (file, index) => {
                         const storagePath = generateStoragePath(userId, projectId, file.name);
 
                         // Upload to storage
@@ -138,8 +138,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
                             return null; // Continue with other files
                         }
 
-                        // Get summary for this file (if available)
-                        const summary = summaries[file.name] || null;
+                        // Get summary for this file by index (summaries are in same order as files)
+                        const summary = summaries[index] || null;
 
                         // Create source record with summary
                         const { error: sourceError } = await supabase.from("sources").insert({

@@ -48,7 +48,7 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
   const [customInputs, setCustomInputs] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [summaries, setSummaries] = useState<Record<string, string | null>>({});
+  const [summaries, setSummaries] = useState<string[]>([]);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -179,7 +179,7 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
     setAnswers({});
     setCustomInputs({});
     setQuestions([]);
-    setSummaries({});
+    setSummaries([]);
     setApiError(null);
     setIsLoadingQuestions(false);
     setIsCreatingProject(false);
@@ -221,13 +221,9 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
       // Update questions state with API response
       setQuestions(data.questions);
 
-      // Extract and store summaries from API response
+      // Store summaries from API response (array of strings in same order as files)
       if (data.summaries && Array.isArray(data.summaries)) {
-        const summariesMap = data.summaries.reduce((acc: Record<string, string | null>, item: { fileName: string; summary: string | null }) => {
-          acc[item.fileName] = item.summary;
-          return acc;
-        }, {} as Record<string, string | null>);
-        setSummaries(summariesMap);
+        setSummaries(data.summaries);
       }
 
       // Transition to details view

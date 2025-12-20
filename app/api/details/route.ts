@@ -62,19 +62,21 @@ export async function POST(request: NextRequest) {
 
     console.log("Generating summaries")
     const summaries = await Promise.all(
-      texts.map(async (text, index) => {
-        const summary = await generateSummary(text);
-        const file = files[index];
-        const filename = file.name;
-        const filetype = file.type || 'unknown';
-        return `<source name="${filename}" type="${filetype}"><summary>${summary}</summary></source>`;
-      })
+      texts.map(async (text) => await generateSummary(text))
     );
 
-    console.log("Generating questions")
-    const questions = await generateQuestions(prompt, summaries);
+    // Format summaries as XML for question generation
+    const formattedSummaries = summaries.map((summary, index) => {
+      const file = files[index];
+      const filename = file.name;
+      const filetype = file.type || 'unknown';
+      return `<source name="${filename}" type="${filetype}"><summary>${summary}</summary></source>`;
+    });
 
-    return NextResponse.json({ 
+    console.log("Generating questions")
+    const questions = await generateQuestions(prompt, formattedSummaries);
+
+    return NextResponse.json({
       questions,
       summaries
     });
