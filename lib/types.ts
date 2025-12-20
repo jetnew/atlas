@@ -1,3 +1,5 @@
+import { Report } from "./schemas/report";
+
 export interface Question {
   question: string;
   options: string[];
@@ -10,7 +12,7 @@ export interface Project {
   created_at: string;
   questions: Question[] | null;
   answers: Record<string, string> | null;
-  report: string | null;
+  report: Report | null;
   sources: Source[];
 }
 

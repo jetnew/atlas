@@ -4,13 +4,14 @@ import { createContext, useContext, useState, useCallback, ReactNode } from "rea
 import { createClient } from "@/lib/supabase/client";
 import { uploadFileToStorage, generateStoragePath, deleteFileFromStorage } from "@/lib/supabase/storage";
 import { Project, Question } from "@/lib/types";
+import { Report } from "@/lib/schemas/report";
 
 interface ProjectContextType {
     currentProject: Project | null;
     projects: Project[];
     isLoading: boolean;
     error: string | null;
-    report: string | null;
+    report: Report | null;
     createProject: (
         prompt: string,
         files: File[],
