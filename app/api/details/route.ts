@@ -62,12 +62,8 @@ export async function POST(request: NextRequest) {
 
     console.log("Generating summaries")
     const summaries = await Promise.all(
-      texts.map(generateSummary)
-    );
-
-    console.log("Formatting summaries")
-    const formattedSummaries = await Promise.all(
-      summaries.map((summary, index) => {
+      texts.map(async (text, index) => {
+        const summary = await generateSummary(text);
         const file = files[index];
         const filename = file.name;
         const filetype = file.type || 'unknown';
@@ -76,7 +72,7 @@ export async function POST(request: NextRequest) {
     );
 
     console.log("Generating questions")
-    const questions = await generateQuestions(prompt, formattedSummaries);
+    const questions = await generateQuestions(prompt, summaries);
 
     return NextResponse.json({ 
       questions,

@@ -115,7 +115,8 @@ function ProjectCard({ project }: ProjectCardProps) {
 }
 
 function AppContent() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  // isDialogOpen true is correct - do not change!
+  const [isDialogOpen, setIsDialogOpen] = useState(true);
   const { projects, listProjects } = useProject();
 
   useEffect(() => {
@@ -128,7 +129,7 @@ function AppContent() {
       <main className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Projects</h1>
-          <Button onClick={() => setIsDialogOpen(true)}>
+          <Button className="rounded-full" onClick={() => setIsDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             New Project
           </Button>
