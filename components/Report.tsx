@@ -56,28 +56,33 @@ export default function Report({ projectId }: ReportProps) {
   const formatReport = () => {
     if (!displayReport?.report) return '';
 
-    const title = displayReport.report.title ? `# ${displayReport.report.title}` : '';
+    const title = displayReport.report.title
+      ? (displayReport.report.title.startsWith('#') ? displayReport.report.title : `# ${displayReport.report.title}`)
+      : '';
 
-    const sections = displayReport.report.sections?.map((item, sectionIndex) => {
+    const sections = displayReport.report.sections?.map((item) => {
       if (!item?.section) return '';
 
       const section = item.section;
-      const sectionNumber = sectionIndex + 1;
-      const sectionHeading = section.heading ? `## ${sectionNumber}. ${section.heading}` : '';
+      const sectionHeading = section.heading
+        ? (section.heading.startsWith('#') ? section.heading : `## ${section.heading}`)
+        : '';
       const sectionText = [sectionHeading, section.text].filter(Boolean).join('\n\n');
 
-      const contentText = section.content?.map((contentItem, subsectionIndex) => {
+      const contentText = section.content?.map((contentItem) => {
         if (!contentItem?.subsection) return '';
 
         const subsection = contentItem.subsection;
-        const subsectionNumber = `${sectionNumber}.${subsectionIndex + 1}`;
-        const subsectionHeading = subsection.subheading ? `### ${subsectionNumber}. ${subsection.subheading}` : '';
+        const subsectionHeading = subsection.subheading
+          ? (subsection.subheading.startsWith('#') ? subsection.subheading : `### ${subsection.subheading}`)
+          : '';
         const subsectionText = [subsectionHeading, subsection.text].filter(Boolean).join('\n\n');
 
-        const subsubsectionText = subsection.subsubsection?.map((subsubItem, subsubIndex) => {
+        const subsubsectionText = subsection.subsubsection?.map((subsubItem) => {
           if (!subsubItem) return '';
-          const subsubNumber = `${subsectionNumber}.${subsubIndex + 1}`;
-          const subsubHeading = subsubItem.subsubheading ? `#### ${subsubNumber}. ${subsubItem.subsubheading}` : '';
+          const subsubHeading = subsubItem.subsubheading
+            ? (subsubItem.subsubheading.startsWith('#') ? subsubItem.subsubheading : `#### ${subsubItem.subsubheading}`)
+            : '';
           return [subsubHeading, subsubItem.text].filter(Boolean).join('\n\n');
         }).join('\n\n') || '';
 
