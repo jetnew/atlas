@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { uploadFileToStorage, generateStoragePath } from "@/lib/supabase/storage";
+import { uploadFileToStorage, generateStoragePath, deleteFileFromStorage } from "@/lib/supabase/storage";
 import { Project, Question } from "@/lib/types";
 
 interface ProjectContextType {
@@ -21,6 +21,7 @@ interface ProjectContextType {
     getProjectData: (id: string) => Promise<void>;
     listProjects: () => Promise<void>;
     updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
+    deleteProject: (id: string) => Promise<void>;
     setCurrentProject: (project: Project | null) => void;
     clearCurrentProject: () => void;
 }
@@ -281,6 +282,78 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         setCurrentProject(null);
     }, []);
 
+    const deleteProject = useCallback(async (id: string) => {
+        setError(null);
+        setIsLoading(true);
+
+        try {
+            const supabase = createClient();
+
+            // Step 1: Get all sources for this project
+            const { data: sources, error: sourcesError } = await supabase
+                .from("sources")
+                .select("storage_path")
+                .eq("project_id", id);
+
+            if (sourcesError) {
+                console.error("Error fetching sources for deletion:", sourcesError);
+                throw new Error(`Failed to fetch sources: ${sourcesError.message}`);
+            }
+
+            // Step 2: Delete all files from storage
+            if (sources && sources.length > 0) {
+                const deletePromises = sources.map(async (source) => {
+                    if (source.storage_path) {
+                        const result = await deleteFileFromStorage(source.storage_path);
+                        if (!result.success) {
+                            console.error(`Failed to delete file ${source.storage_path}:`, result.error);
+                            // Continue with other deletions even if one fails
+                        }
+                    }
+                });
+
+                await Promise.all(deletePromises);
+            }
+
+            // Step 3: Delete all source records (cascade will handle this, but being explicit)
+            const { error: deleteSourcesError } = await supabase
+                .from("sources")
+                .delete()
+                .eq("project_id", id);
+
+            if (deleteSourcesError) {
+                console.error("Error deleting sources:", deleteSourcesError);
+                throw new Error(`Failed to delete sources: ${deleteSourcesError.message}`);
+            }
+
+            // Step 4: Delete the project record
+            const { error: deleteProjectError } = await supabase
+                .from("projects")
+                .delete()
+                .eq("id", id);
+
+            if (deleteProjectError) {
+                throw new Error(`Failed to delete project: ${deleteProjectError.message}`);
+            }
+
+            // Step 5: Update local state
+            setProjects((prev) => prev.filter((p) => p.id !== id));
+
+            // Clear current project if it's the one being deleted
+            if (currentProject && currentProject.id === id) {
+                setCurrentProject(null);
+            }
+        } catch (err) {
+            console.error("Error deleting project:", err);
+            const errorMessage =
+                err instanceof Error ? err.message : "Failed to delete project.";
+            setError(errorMessage);
+            throw err;
+        } finally {
+            setIsLoading(false);
+        }
+    }, [currentProject]);
+
     return (
         <ProjectContext.Provider
             value={{
@@ -293,6 +366,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
                 getProjectData,
                 listProjects,
                 updateProject,
+                deleteProject,
                 setCurrentProject: handleSetCurrentProject,
                 clearCurrentProject: handleClearCurrentProject,
             }}

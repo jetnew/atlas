@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import Header from "@/components/Header";
 import Report from "@/components/Report";
-import LeftPanel from "@/components/LeftPanel";
+import SourcePanel from "@/components/SourcePanel";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -21,7 +21,7 @@ export default function ProjectPage() {
         <div className="h-full pb-2 px-2">
           <ResizablePanelGroup direction="horizontal" className="h-full gap-1">
             <ResizablePanel defaultSize={30} minSize={30}>
-              <LeftPanel />
+              <SourcePanel />
             </ResizablePanel>
             <ResizableHandle />
             <ResizablePanel defaultSize={70} minSize={50}>
