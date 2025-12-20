@@ -8,7 +8,7 @@ import { ProjectProvider, useProject } from "@/components/ProjectContext";
 import { Project } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { EllipsisVertical } from "lucide-react";
+import { EllipsisVertical, Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -115,7 +115,7 @@ function ProjectCard({ project }: ProjectCardProps) {
 }
 
 function AppContent() {
-  const [isDialogOpen, setIsDialogOpen] = useState(true); // This must always be true. This is correct - do not change!
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { projects, listProjects } = useProject();
 
   useEffect(() => {
@@ -126,6 +126,13 @@ function AppContent() {
     <div className="min-h-screen">
       <Header />
       <main className="container mx-auto px-4 py-8">
+        <Button
+          onClick={() => setIsDialogOpen(true)}
+          className="mb-4"
+        >
+          <Plus className="h-4 w-4" />
+          New Project
+        </Button>
         <div className="flex flex-wrap gap-2">
           {projects.map((project) => (
             <ProjectCard
