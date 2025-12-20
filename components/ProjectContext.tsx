@@ -24,6 +24,7 @@ interface ProjectContextType {
     deleteProject: (id: string) => Promise<void>;
     setCurrentProject: (project: Project | null) => void;
     clearCurrentProject: () => void;
+    uploadFilesToProject: (projectId: string, files: File[]) => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -354,6 +355,64 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         }
     }, [currentProject]);
 
+    const uploadFilesToProject = useCallback(async (projectId: string, files: File[]) => {
+        setError(null);
+        setIsLoading(true);
+
+        try {
+            const supabase = createClient();
+
+            // Get authenticated user
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) {
+                throw new Error("You must be logged in to upload files");
+            }
+
+            const userId = user.id;
+
+            // Upload files in parallel
+            const uploadPromises = files.map(async (file) => {
+                const storagePath = generateStoragePath(userId, projectId, file.name);
+
+                // Upload to storage
+                const uploadResult = await uploadFileToStorage(file, storagePath);
+                if (!uploadResult.success) {
+                    console.error(`Failed to upload ${file.name}:`, uploadResult.error);
+                    return null;
+                }
+
+                // Create source record (no summary for drag-and-drop uploads)
+                const { error: sourceError } = await supabase.from("sources").insert({
+                    user_id: userId,
+                    name: file.name,
+                    project_id: projectId,
+                    storage_path: storagePath,
+                    summary: null,
+                });
+
+                if (sourceError) {
+                    console.error(`Failed to create source for ${file.name}:`, sourceError);
+                    return null;
+                }
+
+                return storagePath;
+            });
+
+            await Promise.all(uploadPromises);
+
+            // Refresh current project data to show new sources
+            await getProjectData(projectId);
+        } catch (err) {
+            console.error("Error uploading files:", err);
+            const errorMessage =
+                err instanceof Error ? err.message : "Failed to upload files.";
+            setError(errorMessage);
+            throw err;
+        } finally {
+            setIsLoading(false);
+        }
+    }, [getProjectData]);
+
     return (
         <ProjectContext.Provider
             value={{
@@ -369,6 +428,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
                 deleteProject,
                 setCurrentProject: handleSetCurrentProject,
                 clearCurrentProject: handleClearCurrentProject,
+                uploadFilesToProject,
             }}
         >
             {children}

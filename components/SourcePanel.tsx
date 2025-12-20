@@ -47,7 +47,7 @@ function SourceTab({ source }: SourceTabProps) {
 
   return (
     <>
-      <div className="w-full flex items-center gap-2 group p-2 rounded-md hover:bg-accent transition-colors">
+      <div className="w-full flex items-center gap-2 group px-2 py-1 rounded-md hover:bg-accent transition-colors">
         <FileText className="h-4 w-4" />
         <span className="text-sm flex-1 text-left font-medium">{source.name}</span>
         <DropdownMenu>
@@ -98,15 +98,67 @@ function SourceTab({ source }: SourceTabProps) {
 }
 
 export default function SourcePanel() {
-  const { currentProject, isLoading } = useProject();
+  const { currentProject, isLoading, uploadFilesToProject } = useProject();
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    setUploadError(null);
+
+    if (!currentProject) {
+      setUploadError("No project selected");
+      return;
+    }
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    try {
+      await uploadFilesToProject(currentProject.id, files);
+    } catch (error) {
+      console.error("Failed to upload files:", error);
+      setUploadError(error instanceof Error ? error.message : "Failed to upload files");
+    }
+  };
 
   return (
-    <Card className="h-full flex flex-col overflow-hidden p-0">
+    <Card
+      className="h-full flex flex-col overflow-hidden p-0 relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragging && (
+        <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 rounded-lg">
+          <FileText className="h-8 w-8 text-muted-foreground" />
+          <div className="text-sm text-muted-foreground">Drop to add to project</div>
+        </div>
+      )}
       <CardContent className="flex-1 overflow-auto p-2">
+        {uploadError && (
+          <div className="text-xs text-destructive mb-2 p-2 bg-destructive/10 rounded">
+            {uploadError}
+          </div>
+        )}
         {isLoading ? (
           <div className="text-muted-foreground">Loading sources...</div>
         ) : currentProject?.sources && currentProject.sources.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-0.5">
             {currentProject.sources.map((source) => (
               <SourceTab key={source.id} source={source} />
             ))}
