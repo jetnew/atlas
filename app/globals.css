@@ -80,6 +80,10 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Global scrollbar theme (light) */
+  --scrollbar-thumb: oklch(0.7 0 0);
+  --scrollbar-thumb-hover: oklch(0.55 0 0);
+  --scrollbar-track: transparent;
 }
 
 .dark {
@@ -114,6 +118,10 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* Global scrollbar theme (dark) */
+  --scrollbar-thumb: oklch(0.5 0 0);
+  --scrollbar-thumb-hover: oklch(0.7 0 0);
+  --scrollbar-track: transparent;
 }
 
 @layer base {
