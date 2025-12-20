@@ -286,7 +286,12 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
         onOpenChange(open);
       }}
     >
-      <DialogContent className={currentView === "prompt" ? "pt-12 pb-7 px-6" : ""}>
+      <DialogContent
+        className={currentView === "prompt" ? "pt-12 pb-7 px-6" : ""}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {currentView === "prompt" && (
           <>
             <DialogHeader className="mb-1">
@@ -301,18 +306,13 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
               className="sr-only"
               aria-label="Upload files"
             />
-            <InputGroup
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className="relative"
-            >
-              {isDragging && (
-                <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 rounded-lg">
-                  <FileText className="h-8 w-8 text-muted-foreground" />
-                  <div className="text-sm text-muted-foreground">Drop to add to project</div>
-                </div>
-              )}
+            {isDragging && (
+              <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 rounded-lg">
+                <FileText className="h-8 w-8 text-muted-foreground" />
+                <div className="text-sm text-muted-foreground">Drop to add to project</div>
+              </div>
+            )}
+            <InputGroup className="relative">
               <InputGroupTextarea
                 value={projectPrompt}
                 onChange={(e) => setProjectPrompt(e.target.value)}
