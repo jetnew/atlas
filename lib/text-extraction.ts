@@ -1,5 +1,5 @@
-import { PDFParse } from 'pdf-parse';
 import mammoth from 'mammoth';
+import { extractPdfTextByPages } from './pdf-extractor';
 
 /**
  * Supported file extensions for text extraction
@@ -51,16 +51,16 @@ function isValidFileType(file: File, extension: string): boolean {
 }
 
 /**
- * Extract text from PDF file using pdf-parse
+ * Extract text from PDF file using pdf-parse page-by-page extraction
  */
 async function extractTextFromPDF(file: File): Promise<string> {
   try {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const parser = new PDFParse({ data: buffer });
-    const result = await parser.getText();
-    await parser.destroy();
-    return result.text || "";
+    const pages = await extractPdfTextByPages(buffer);
+
+    // Combine all pages with double newline separator
+    return pages.map(page => page.text).join('\n\n');
   } catch (error) {
     throw new Error(
       `Failed to extract text from PDF "${file.name}": ${

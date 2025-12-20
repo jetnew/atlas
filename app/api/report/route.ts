@@ -9,9 +9,7 @@ async function generateReport(
   questions: Array<{ question: string; options: string[] }>,
   answers: Record<string, string>
 ) {
-  const summariesText = summaries.length > 0
-    ? `\n\nSource summaries:\n${summaries.join('\n\n')}`
-    : '';
+  const summariesText = summaries.filter(summary => summary.length > 0).join('\n\n');
 
   const qaContext = questions.length > 0
     ? `\n\nClarifications:\n${questions.map((q, i) =>
@@ -19,7 +17,7 @@ async function generateReport(
       ).join('\n\n')}`
     : '';
 
-  const systemPrompt = `You are a deep research assistant, tasked to generate a comprehensive report on the user's project. You are given the user's prompt, the summaries of the sources attached by the user for the project, and the clarifications (questions and answers) to the user's prompt. Your goal is to generate a comprehensive, detailed, in-depth report on the user's project, highlighting key insights and details. Structure the report into an organized structure, formatting the report with # for project title, ## 1. for headings, ### 1.1. for sub-headings, #### 1.1.1. for sub-sub-headings, etc.. Your report must include in-line citations, formatted using "[1]", "[2]", "[3]" etc., and bibliography at the end of the report.
+  const systemPrompt = `You are a research assistant, tasked to generate a comprehensive report on the user's project. You are given the user's prompt, the summaries of the sources attached by the user for the project, and the clarifications (questions and answers) to the user's prompt. Your goal is to generate a comprehensive, detailed, in-depth report on the user's project, highlighting key insights and details. Structure the report into an organized structure, formatting the report with # for project title, ## 1. for headings, ### 1.1. for sub-headings, #### 1.1.1. for sub-sub-headings, etc.. Your report must include in-line citations, formatted using "[1]", "[2]", "[3]" etc., and bibliography at the end of the report.
 
 User prompt: ${prompt}
 
