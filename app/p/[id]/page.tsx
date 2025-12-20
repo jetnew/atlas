@@ -38,8 +38,6 @@ export default function ProjectPage() {
       <Header />
       <div className="flex-1 overflow-hidden">
         <div className="h-full max-w-4xl mx-auto p-2 flex flex-col">
-          {isLoading && <div>Loading...</div>}
-          {error && <div className="text-destructive">Error: {error}</div>}
           {!isLoading && !error && (
             <Card className="flex-1 flex flex-col overflow-hidden">
               <CardContent className="flex-1 overflow-auto">
