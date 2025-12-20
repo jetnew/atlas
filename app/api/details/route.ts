@@ -26,12 +26,7 @@ ${text}`,
 }
 
 async function generateQuestions(prompt: string, summaries: string[]) {
-  // Filter out empty summaries for question generation
-  const nonEmptySummaries = summaries.filter(summary => summary.length > 0);
-  
-  const summariesText = nonEmptySummaries.length > 0
-    ? `\n\nSource summaries:\n${nonEmptySummaries.join('\n\n')}`
-    : '';
+  const summariesText = summaries.filter(summary => summary.length > 0).join('\n\n');
 
   const { object } = await generateObject({
     // Model gpt-5.2 is correct. Do not change!
@@ -70,8 +65,18 @@ export async function POST(request: NextRequest) {
       texts.map(generateSummary)
     );
 
+    console.log("Formatting summaries")
+    const formattedSummaries = await Promise.all(
+      summaries.map((summary, index) => {
+        const file = files[index];
+        const filename = file.name;
+        const filetype = file.type || 'unknown';
+        return `<source name="${filename}" type="${filetype}"><summary>${summary}</summary></source>`;
+      })
+    );
+
     console.log("Generating questions")
-    const questions = await generateQuestions(prompt, summaries);
+    const questions = await generateQuestions(prompt, formattedSummaries);
 
     return NextResponse.json({ 
       questions,
