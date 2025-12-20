@@ -95,3 +95,36 @@ export async function getFileUrl(storagePath: string, expiresIn = 3600): Promise
 
   return data?.signedUrl || null;
 }
+
+/**
+ * Download a file from Supabase Storage
+ * @returns The blob data on success, null on failure
+ */
+export async function downloadFileFromStorage(
+  storagePath: string
+): Promise<{ success: boolean; data?: Blob; error?: string }> {
+  const supabase = createClient();
+
+  try {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .download(storagePath);
+
+    if (error) {
+      console.error('Storage download error:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data) {
+      return { success: false, error: 'No data returned from storage' };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Unexpected download error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}

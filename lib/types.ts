@@ -1,12 +1,17 @@
+export interface Question {
+  question: string;
+  options: string[];
+}
+
 export interface Project {
   id: string;
   user_id: string;
   prompt: string;
   created_at: string;
-  report_content: string | null;
-  report_status: 'pending' | 'generating' | 'completed' | 'failed' | null;
-  report_error: string | null;
-  report_generated_at: string | null;
+  questions: Question[] | null;
+  answers: Record<string, string> | null;
+  report: string | null;
+  sources: Source[];
 }
 
 export interface Source {
@@ -16,6 +21,7 @@ export interface Source {
   name: string;
   project_id: string;
   storage_path: string;
+  summary: string | null;
 }
 
 export interface UploadedFileInfo {

@@ -60,7 +60,7 @@ async function extractTextFromPDF(file: File): Promise<string> {
     const parser = new PDFParse({ data: buffer });
     const result = await parser.getText();
     await parser.destroy();
-    return result.text;
+    return result.text || "";
   } catch (error) {
     throw new Error(
       `Failed to extract text from PDF "${file.name}": ${
@@ -78,7 +78,7 @@ async function extractTextFromDOCX(file: File): Promise<string> {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const result = await mammoth.extractRawText({ buffer });
-    return result.value;
+    return result.value || "";
   } catch (error) {
     throw new Error(
       `Failed to extract text from DOCX "${file.name}": ${

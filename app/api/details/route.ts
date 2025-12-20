@@ -5,20 +5,32 @@ import { z } from 'zod';
 import { extractText } from "@/lib/text-extraction";
 
 async function generateSummary(text: string) {
-  const { text: summary } = await generateText({
-    model: openai("gpt-5-mini"),
-    prompt: `You are a document reader, tasked to summarize a document comprehensively. You are given the document text source, and your goal is to summarize the document, highlighting key details and topics to represent the document faithfully.
+  if (text.length === 0) {
+    return "";
+  }
+
+  try {
+    const { text: summary } = await generateText({
+      model: openai("gpt-5-mini"),
+      prompt: `You are a document reader, tasked to summarize a document comprehensively. You are given the document text source, and your goal is to summarize the document, highlighting key details and topics to represent the document faithfully.
 
 Document source:
 ${text}`,
-  });
+    });
 
-  return summary;
+    return summary || "";
+  } catch (error) {
+    console.error(`Failed to generate summary:`, error);
+    return "";
+  }
 }
 
 async function generateQuestions(prompt: string, summaries: string[]) {
-  const summariesText = summaries.length > 0
-    ? `\n\nSource summaries:\n${summaries.join('\n\n')}`
+  // Filter out empty summaries for question generation
+  const nonEmptySummaries = summaries.filter(summary => summary.length > 0);
+  
+  const summariesText = nonEmptySummaries.length > 0
+    ? `\n\nSource summaries:\n${nonEmptySummaries.join('\n\n')}`
     : '';
 
   const { object } = await generateObject({
@@ -48,24 +60,23 @@ export async function POST(request: NextRequest) {
     const prompt = formData.get("prompt") as string;
     const files = formData.getAll("files") as File[];
 
-    
     console.log("Extracting text")
-    // Extract text from files in parallel
-    const extractedTexts: string[] = (await Promise.all(
-      files.map(file => extractText(file))
-    )).filter(text => text.length > 0);
+    const texts = await Promise.all(
+      files.map(extractText)
+    );
 
     console.log("Generating summaries")
-    // Generate summaries from extracted texts in parallel
-    const summaries: string[] = await Promise.all(
-      extractedTexts.map(text => generateSummary(text))
+    const summaries = await Promise.all(
+      texts.map(generateSummary)
     );
 
     console.log("Generating questions")
-    // Generate clarification questions using AI
     const questions = await generateQuestions(prompt, summaries);
 
-    return NextResponse.json({ questions });
+    return NextResponse.json({ 
+      questions,
+      summaries
+    });
   } catch (error) {
     console.error("Error in /api/details:", error);
     return NextResponse.json(

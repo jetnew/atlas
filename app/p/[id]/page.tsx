@@ -1,33 +1,39 @@
-import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
+"use client";
+
+import { useEffect } from "react";
+import { useParams } from "next/navigation";
 import Header from "@/components/Header";
-import ProjectReport from "@/components/ProjectReport";
+import { useProject } from "@/components/ProjectContext";
 
-export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const supabase = await createClient();
+export default function ProjectPage() {
+  const params = useParams();
+  const id = params.id as string;
+  const { currentProject, getProjectData, isLoading, error } = useProject();
 
-  // Fetch project
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("id", id)
-    .single();
+  useEffect(() => {
+    if (id) {
+      getProjectData(id).catch((err) => {
+        console.error('Error fetching project data:', err);
+      });
+    }
+  }, [id, getProjectData]);
 
-  if (projectError || !project) {
-    notFound();
-  }
-
-  // Fetch sources
-  const { data: sources } = await supabase
-    .from("sources")
-    .select("*")
-    .eq("project_id", id);
+  const report = currentProject?.report || "";
 
   return (
-    <div className="min-h-screen">
+    <div className="h-screen flex flex-col">
       <Header />
-      <ProjectReport project={project} sources={sources || []} />
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-4xl mx-auto p-6">
+          {isLoading && <div>Loading...</div>}
+          {error && <div className="text-destructive">Error: {error}</div>}
+          {!isLoading && !error && (
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <div className="whitespace-pre-wrap">{report}</div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

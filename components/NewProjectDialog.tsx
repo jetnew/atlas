@@ -21,8 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ArrowUpIcon, Plus as IconPlus, X as XIcon, FileText, ArrowRight, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { uploadFileToStorage, generateStoragePath } from "@/lib/supabase/storage";
+import { useProject } from "@/components/ProjectContext";
 
 interface NewProjectDialogProps {
   open: boolean;
@@ -49,11 +48,13 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
   const [customInputs, setCustomInputs] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [summaries, setSummaries] = useState<Record<string, string | null>>({});
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectCreationError, setProjectCreationError] = useState<string | null>(null);
   const router = useRouter();
+  const { createProject } = useProject();
 
   const currentQuestion = questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
@@ -128,72 +129,31 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
     setFileError("");
   };
 
-  const createProject = async () => {
+  const handleCreateProject = async () => {
     setProjectCreationError(null);
     setIsCreatingProject(true);
 
     try {
-      const supabase = createClient();
+      // Compile final answers with custom inputs
+      const finalAnswers = Object.entries(answers).reduce((acc, [index, answer]) => {
+        acc[index] = answer === "__custom__" ? customInputs[index] || "" : answer;
+        return acc;
+      }, {} as Record<string, string>);
 
-      // Step 1: Get authenticated user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error("You must be logged in to create a project");
-      }
+      // Create project using context
+      const projectId = await createProject(
+        projectPrompt,
+        selectedFiles,
+        questions,
+        finalAnswers,
+        summaries
+      );
 
-      const userId = user.id;
-
-      // Step 2: Create project record (only prompt, no answers)
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .insert({
-          user_id: userId,
-          prompt: projectPrompt,
-        })
-        .select()
-        .single();
-
-      if (projectError || !projectData) {
-        console.error("Project creation error:", projectError);
+      if (!projectId) {
         throw new Error("Failed to create project. Please try again.");
       }
 
-      const projectId = projectData.id;
-
-      // Step 3: Upload files in parallel (if any)
-      if (selectedFiles.length > 0) {
-        const uploadPromises = selectedFiles.map(async (file) => {
-          const storagePath = generateStoragePath(userId, projectId, file.name);
-
-          // Upload to storage
-          const uploadResult = await uploadFileToStorage(file, storagePath);
-          if (!uploadResult.success) {
-            console.error(`Failed to upload ${file.name}:`, uploadResult.error);
-            return null; // Continue with other files
-          }
-
-          // Create source record
-          const { error: sourceError } = await supabase
-            .from('sources')
-            .insert({
-              user_id: userId,
-              name: file.name,
-              project_id: projectId,
-              storage_path: storagePath,
-            });
-
-          if (sourceError) {
-            console.error(`Failed to create source for ${file.name}:`, sourceError);
-            return null; // Continue with other files
-          }
-
-          return storagePath;
-        });
-
-        await Promise.all(uploadPromises);
-      }
-
-      // Step 4: Navigate to project page
+      // Navigate to project page
       resetDialogState();
       onOpenChange(false);
       router.push(`/p/${projectId}`);
@@ -219,6 +179,7 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
     setAnswers({});
     setCustomInputs({});
     setQuestions([]);
+    setSummaries({});
     setApiError(null);
     setIsLoadingQuestions(false);
     setIsCreatingProject(false);
@@ -259,6 +220,15 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
 
       // Update questions state with API response
       setQuestions(data.questions);
+
+      // Extract and store summaries from API response
+      if (data.summaries && Array.isArray(data.summaries)) {
+        const summariesMap = data.summaries.reduce((acc: Record<string, string | null>, item: { fileName: string; summary: string | null }) => {
+          acc[item.fileName] = item.summary;
+          return acc;
+        }, {} as Record<string, string | null>);
+        setSummaries(summariesMap);
+      }
 
       // Transition to details view
       setCurrentView("details");
@@ -472,7 +442,7 @@ export function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps) 
                 </div>
               )}
               <Button
-                onClick={isLastQuestion ? createProject : handleNextQuestion}
+                onClick={isLastQuestion ? handleCreateProject : handleNextQuestion}
                 disabled={
                   !currentAnswer ||
                   (currentAnswer === "__custom__" && !customInputs[currentQuestionIndex]?.trim()) ||

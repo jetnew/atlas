@@ -1,19 +1,7 @@
-import { NextRequest } from 'next/server';
-import { streamText, generateText } from 'ai';
+import { NextRequest, NextResponse } from 'next/server';
+import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { extractText } from '@/lib/text-extraction';
-
-async function generateSummary(text: string) {
-  const { text: summary } = await generateText({
-    model: openai("gpt-5-mini"),
-    prompt: `You are a document reader, tasked to summarize a document comprehensively. You are given the document text source, and your goal is to summarize the document, highlighting key details and topics to represent the document faithfully.
-
-Document source:
-${text}`,
-  });
-
-  return summary;
-}
+import { createClient } from '@/lib/supabase/server';
 
 async function generateReport(
   prompt: string,
@@ -53,67 +41,63 @@ export async function POST(request: NextRequest) {
     console.log("Received report generation request");
     const formData = await request.formData();
     const projectId = formData.get('projectId') as string;
-    const prompt = formData.get('prompt') as string;
-    const files = formData.getAll('files') as File[];
-    const questions = JSON.parse(formData.get('questions') as string || '[]');
-    const answers = JSON.parse(formData.get('answers') as string || '{}');
 
-    // Update status to 'generating' in database
-    console.log("Updating project status to generating");
-    try {
-      await fetch(`${request.nextUrl.origin}/api/projects/${projectId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ report_status: 'generating' }),
-      });
-    } catch (e) {
-      console.warn('Failed to update project status to generating:', e);
-      // Continue anyway - status update is not critical for report generation
+    if (!projectId) {
+      return NextResponse.json(
+        { error: "projectId is required" },
+        { status: 400 }
+      );
     }
 
-    // Extract text from files
-    console.log("Extracting text from files");
-    const extractedTexts = (await Promise.all(
-      files.map(file => extractText(file))
-    )).filter(text => text.length > 0);
+    const supabase = await createClient();
 
-    // Generate summaries
-    console.log("Generating summaries");
-    const summaries = await Promise.all(
-      extractedTexts.map(text => generateSummary(text))
-    );
+    // Fetch project data
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .select('prompt, questions, answers')
+      .eq('id', projectId)
+      .single();
+
+    if (projectError || !project) {
+      console.error("Error fetching project:", projectError);
+      return NextResponse.json(
+        { error: "Failed to fetch project" },
+        { status: 404 }
+      );
+    }
+
+    // Fetch sources with summaries
+    const { data: sources, error: sourcesError } = await supabase
+      .from('sources')
+      .select('summary')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
+
+    if (sourcesError) {
+      console.error("Error fetching sources:", sourcesError);
+      // Continue with empty summaries if sources fetch fails
+    }
+
+    // Extract summaries from sources (filter out nulls)
+    const summaries: string[] = (sources || [])
+      .map(source => source.summary)
+      .filter((summary): summary is string => summary !== null && summary !== undefined);
+
+    // Parse questions and answers
+    const questions = project.questions || [];
+    const answers = project.answers || {};
 
     // Stream report generation
     console.log("Starting report generation");
-    const result = await generateReport(prompt, summaries, questions, answers);
+    const result = await generateReport(project.prompt, summaries, questions, answers);
 
-    // Return streaming response
-    return result.toTextStreamResponse();
+    return result.toUIMessageStreamResponse();
 
   } catch (error) {
     console.error('Error in /api/report:', error);
-
-    // Update status to 'failed' in database
-    // Note: We need to extract projectId from a fresh formData read since we're in the catch block
-    try {
-      const formData = await request.clone().formData();
-      const projectId = formData.get('projectId') as string;
-
-      if (projectId) {
-        await fetch(`${request.nextUrl.origin}/api/projects/${projectId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            report_status: 'failed',
-            report_error: error instanceof Error ? error.message : 'Unknown error',
-          }),
-        });
-      }
-    } catch (e) {
-      console.warn('Failed to update project status to failed:', e);
-      // Continue anyway - error already logged above
-    }
-
-    return new Response('Internal Server Error', { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
