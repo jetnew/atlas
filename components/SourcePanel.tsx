@@ -27,18 +27,23 @@ interface SourceTabProps {
     id: string;
     name: string;
     summary?: string | null;
+    storage_path?: string | null;
   };
 }
 
 function SourceTab({ source }: SourceTabProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const { deleteSource } = useProject();
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     try {
-      // TODO: Implement delete source functionality
-      console.log("Delete source:", source.id);
+      if (!source.storage_path) {
+        console.error("No storage path for source:", source.id);
+        return;
+      }
+      await deleteSource(source.id, source.storage_path);
       setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error("Failed to delete source:", error);

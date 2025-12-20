@@ -22,6 +22,7 @@ interface ProjectContextType {
     listProjects: () => Promise<void>;
     updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
     deleteProject: (id: string) => Promise<void>;
+    deleteSource: (sourceId: string, storagePath: string) => Promise<void>;
     setCurrentProject: (project: Project | null) => void;
     clearCurrentProject: () => void;
     uploadFilesToProject: (projectId: string, files: File[]) => Promise<void>;
@@ -413,6 +414,45 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         }
     }, [getProjectData]);
 
+    const deleteSource = useCallback(async (sourceId: string, storagePath: string) => {
+        setError(null);
+        setIsLoading(true);
+
+        try {
+            const supabase = createClient();
+
+            // Step 1: Delete file from storage
+            const result = await deleteFileFromStorage(storagePath);
+            if (!result.success) {
+                console.error(`Failed to delete file ${storagePath}:`, result.error);
+                throw new Error(`Failed to delete file from storage: ${result.error}`);
+            }
+
+            // Step 2: Delete source record from database
+            const { error: deleteError } = await supabase
+                .from("sources")
+                .delete()
+                .eq("id", sourceId);
+
+            if (deleteError) {
+                throw new Error(`Failed to delete source: ${deleteError.message}`);
+            }
+
+            // Step 3: Refresh current project to update the sources list
+            if (currentProject) {
+                await getProjectData(currentProject.id);
+            }
+        } catch (err) {
+            console.error("Error deleting source:", err);
+            const errorMessage =
+                err instanceof Error ? err.message : "Failed to delete source.";
+            setError(errorMessage);
+            throw err;
+        } finally {
+            setIsLoading(false);
+        }
+    }, [currentProject, getProjectData]);
+
     return (
         <ProjectContext.Provider
             value={{
@@ -426,6 +466,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
                 listProjects,
                 updateProject,
                 deleteProject,
+                deleteSource,
                 setCurrentProject: handleSetCurrentProject,
                 clearCurrentProject: handleClearCurrentProject,
                 uploadFilesToProject,
