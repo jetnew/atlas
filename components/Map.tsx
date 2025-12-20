@@ -1,11 +1,9 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import {
   ReactFlow,
   Background,
-  Controls,
-  MiniMap,
   Node,
   Edge,
   MarkerType,
@@ -19,7 +17,7 @@ interface MapProps {
 
 export default function Map({ report }: MapProps) {
   const { nodes, edges } = useMemo(() => {
-    if (!report) {
+    if (!report || !report.report || !report.report.sections) {
       return { nodes: [], edges: [] };
     }
 
@@ -46,12 +44,13 @@ export default function Map({ report }: MapProps) {
     });
 
     const currentY = 150;
-    const sectionSpacing = 200;
     const subsectionSpacing = 150;
     const subsubsectionSpacing = 150;
 
     // Section nodes (children of root)
     report.report.sections.forEach((section, sectionIndex) => {
+      if (!section.section) return;
+
       const sectionId = `node-${nodeId++}`;
       const sectionX = (sectionIndex - (report.report.sections.length - 1) / 2) * 300;
 
@@ -79,7 +78,10 @@ export default function Map({ report }: MapProps) {
       });
 
       // Subsection nodes (children of sections)
+      if (!section.section.content) return;
       section.section.content.forEach((subsection, subsectionIndex) => {
+        if (!subsection.subsection) return;
+
         const subsectionId = `node-${nodeId++}`;
         const subsectionX = sectionX + (subsectionIndex - (section.section.content.length - 1) / 2) * 250;
         const subsectionY = currentY + subsectionSpacing;
@@ -110,6 +112,7 @@ export default function Map({ report }: MapProps) {
         });
 
         // Subsubsection nodes (grandchildren)
+        if (!subsection.subsection.subsubsection) return;
         subsection.subsection.subsubsection.forEach((subsubsection, subsubIndex) => {
           const subsubId = `node-${nodeId++}`;
           const subsubX = subsectionX + (subsubIndex - (subsection.subsection.subsubsection.length - 1) / 2) * 200;
