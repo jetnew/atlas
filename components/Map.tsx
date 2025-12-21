@@ -187,6 +187,12 @@ export default function Map({ report }: MapProps) {
         }}
       >
       </ReactFlow>
+      <style jsx global>{`
+        .react-flow__handle {
+          opacity: 0;
+          pointer-events: none;
+        }
+      `}</style>
     </div>
   );
 }
