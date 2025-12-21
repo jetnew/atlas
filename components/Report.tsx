@@ -18,7 +18,7 @@ export default function Report({ projectId }: ReportProps) {
   const { isLoading, error, getProjectData, currentProject } = useProject();
   const reportGeneratedRef = useRef(false);
   const mapGeneratedRef = useRef(false);
-  const [isMapView, setIsMapView] = useState(false);
+  const [isMapView, setIsMapView] = useState(true);
 
   // Hook 1: Generate markdown text report
   const {
