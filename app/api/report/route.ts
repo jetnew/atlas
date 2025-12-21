@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { streamObject } from 'ai';
+import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { createClient } from '@/lib/supabase/server';
-import { reportSchema } from '@/lib/schemas/report';
 
 async function generateReport(
   prompt: string,
@@ -18,7 +17,7 @@ async function generateReport(
       ).join('\n\n')}`
     : '';
 
-  const systemPrompt = `You are a research assistant, tasked to generate a comprehensive report on the user's project. You are given the user's prompt, the summaries of the sources attached by the user for the project, and the clarifications (questions and answers) to the user's prompt. Your goal is to generate a comprehensive, detailed, in-depth report on the user's project, highlighting key insights and details. Structure the report into an organized structure, formatting the report with the project title, section headings, sub-section sub-headings, sub-sub-section sub-sub-headings, etc., which should all be in text without any ordering/numbering.
+  const systemPrompt = `You are a research assistant, tasked to generate a comprehensive report on the user's project. You are given the user's prompt, the summaries of the sources attached by the user for the project, and the clarifications (questions and answers) to the user's prompt. Your goal is to generate a comprehensive, detailed, in-depth report on the user's project, highlighting key insights and details. Structure the report into an organized structure, formatting the report with the project title, section headings, sub-section sub-headings, sub-sub-section sub-sub-headings, etc.
 
 User prompt: ${prompt}
 
@@ -28,21 +27,20 @@ ${summariesText}
 Clarification questions and answers:
 ${qaContext}`;
 
-  return streamObject({
+  return streamText({
     model: openai('gpt-5.2'),
     prompt: systemPrompt,
-    schema: reportSchema,
   });
 }
 
 async function saveReportToDatabase(
   projectId: string,
-  report: unknown,
+  reportText: string,
   supabase: Awaited<ReturnType<typeof createClient>>
 ) {
   const { error } = await supabase
     .from('projects')
-    .update({ report })
+    .update({ report: reportText })
     .eq('id', projectId);
 
   if (error) {
@@ -57,7 +55,8 @@ export async function POST(request: NextRequest) {
   try {
     console.log("Received report generation request");
 
-    const projectId = await request.json();
+    const body = await request.json();
+    const projectId = body.projectId;
 
     if (!projectId) {
       return NextResponse.json(
@@ -111,14 +110,14 @@ export async function POST(request: NextRequest) {
     // Fire-and-forget: save to database after stream is consumed
     (async () => {
       try {
-        const finalObject = await result.object;
-        await saveReportToDatabase(projectId, finalObject, supabase);
+        const fullText = await result.text;
+        await saveReportToDatabase(projectId, fullText, supabase);
       } catch (error) {
         console.error('Failed to save report to database:', error);
       }
     })();
 
-    return result.toTextStreamResponse();
+    return result.toUIMessageStreamResponse();
 
   } catch (error) {
     console.error('Error in /api/report:', error);

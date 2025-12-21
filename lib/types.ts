@@ -1,4 +1,4 @@
-import { Report } from "./schemas/report";
+import { Map } from "./schemas/report";
 
 export interface Question {
   question: string;
@@ -12,7 +12,8 @@ export interface Project {
   created_at: string;
   questions: Question[] | null;
   answers: Record<string, string> | null;
-  report: Report | null;
+  report: string | null;
+  map: Map | null;
   sources: Source[];
 }
 

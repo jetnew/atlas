@@ -9,10 +9,10 @@ import {
   MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Report as ReportType } from "@/lib/schemas/report";
+import { Map as MapType } from "@/lib/schemas/report";
 
 interface MapProps {
-  report: ReportType | null;
+  report: MapType | null;
 }
 
 export default function Map({ report }: MapProps) {
