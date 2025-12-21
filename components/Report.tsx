@@ -19,6 +19,7 @@ export default function Report({ projectId }: ReportProps) {
   const reportGeneratedRef = useRef(false);
   const mapGeneratedRef = useRef(false);
   const [isMapView, setIsMapView] = useState(false);
+  const [isCleared, setIsCleared] = useState(false);
 
   // Hook 1: Generate markdown text report
   const {
