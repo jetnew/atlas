@@ -179,6 +179,11 @@ export default function Map({ report }: MapProps) {
         nodes={nodes}
         edges={edges}
         fitView
+        fitViewOptions={{
+          maxZoom: 1,
+          minZoom: 1,
+        }}
+        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         minZoom={0.1}
         maxZoom={1.5}
         panOnScroll
