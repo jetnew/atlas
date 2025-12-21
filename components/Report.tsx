@@ -5,7 +5,7 @@ import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { Streamdown } from "streamdown";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Map, NotebookText } from "lucide-react";
+import { Map, NotebookText, RefreshCcw } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
 import { reportSchema, Report as ReportType } from "@/lib/schemas/report";
 import { formatReport } from "@/lib/formatReport";
@@ -66,6 +66,15 @@ export default function Report({ projectId }: ReportProps) {
         onClick={() => setIsMapView(!isMapView)}
       >
         {isMapView ? <NotebookText className="h-4 w-4" /> : <Map className="h-4 w-4" />}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute bottom-4 right-4 z-10"
+        onClick={() => generateReport(projectId)}
+        disabled={isGenerating}
+      >
+        <RefreshCcw className="h-4 w-4" />
       </Button>
       <CardContent className="flex-1 overflow-auto flex justify-center p-0">
         {isMapView ? (

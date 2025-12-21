@@ -16,6 +16,7 @@ interface MapProps {
 }
 
 export default function Map({ report }: MapProps) {
+  console.log("Map report:", report);
   const { nodes, edges } = useMemo(() => {
     if (!report || !report.report || !report.report.sections) {
       return { nodes: [], edges: [] };
@@ -169,7 +170,6 @@ export default function Map({ report }: MapProps) {
           hideAttribution: true,
         }}
       >
-        <Background />
       </ReactFlow>
     </div>
   );
