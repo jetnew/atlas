@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Header from "@/components/Header";
-import Report from "@/components/Report";
+import ReportPanel from "@/components/ReportPanel";
 import SourcePanel from "@/components/SourcePanel";
 import {
   ResizableHandle,
@@ -25,7 +25,7 @@ export default function ProjectPage() {
             </ResizablePanel>
             <ResizableHandle />
             <ResizablePanel defaultSize={70} minSize={50}>
-              <Report projectId={id} />
+              <ReportPanel projectId={id} />
             </ResizablePanel>
           </ResizablePanelGroup>
         </div>
