@@ -143,7 +143,7 @@ export default function Map({ report }: MapProps) {
 
       const root = hierarchy(nodes);
       const treeLayout = tree<Node>()
-        .nodeSize([180, 200])
+        .nodeSize([180, 160])
         .separation((a, b) => {
           // If nodes share the same parent, use tighter spacing
           if (a.parent === b.parent) {
