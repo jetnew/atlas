@@ -19,7 +19,7 @@ export default function ProjectPage() {
       <Header />
       <div className="flex-1 overflow-hidden">
         <div className="h-full pb-2 px-2">
-          <ResizablePanelGroup direction="horizontal" className="h-full gap-1">
+          <ResizablePanelGroup direction="horizontal" className="h-full">
             <ResizablePanel defaultSize={30} minSize={30}>
               <SourcePanel />
             </ResizablePanel>
