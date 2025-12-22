@@ -174,7 +174,7 @@ export default function Map({ report }: MapProps) {
   }
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full" style={{ overscrollBehavior: 'contain' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

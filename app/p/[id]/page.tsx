@@ -14,7 +14,7 @@ export default function ProjectPage() {
   const id = params.id as string;
 
   return (
-    <div className="[--header-height:calc(--spacing(12))]">
+    <div className="[--header-height:calc(--spacing(12))]" >
       <SidebarProvider className="flex flex-col">
         <Header />
         <div className="flex flex-1">
