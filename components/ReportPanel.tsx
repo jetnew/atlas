@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useMemo, useState } from "react";
-import { experimental_useObject as useObject, useCompletion } from "@ai-sdk/react";
+import { useCompletion } from "@ai-sdk/react";
 import { Button } from "@/components/ui/button";
 import { NotebookText, RefreshCcw } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
-import { mapSchema, Map as MapType } from "@/lib/schemas/report";
+import { parseReportToMap } from "@/lib/formatReport";
 import Map from "@/components/Map";
 import Report from "@/components/Report";
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -17,10 +17,9 @@ interface ReportPanelProps {
 export default function ReportPanel({ projectId }: ReportPanelProps) {
   const { isLoading, error, getProjectData, currentProject } = useProject();
   const reportGeneratedRef = useRef(false);
-  const mapGeneratedRef = useRef(false);
   const [isMapView, setIsMapView] = useState(true);
 
-  // Hook 1: Generate markdown text report
+  // Hook: Generate markdown text report
   const {
     completion: reportText,
     complete: generateReport,
@@ -30,16 +29,6 @@ export default function ReportPanel({ projectId }: ReportPanelProps) {
     body: { projectId },
   });
 
-  // Hook 2: Generate structured map from report text
-  const {
-    object: streamedMap,
-    submit: generateMap,
-    isLoading: isGeneratingMap
-  } = useObject({
-    api: '/api/map',
-    schema: mapSchema,
-  });
-
   // Load project data on mount
   useEffect(() => {
     if (projectId) {
@@ -47,30 +36,13 @@ export default function ReportPanel({ projectId }: ReportPanelProps) {
     }
   }, [projectId, getProjectData]);
 
-  // Step 1: Generate report if none exists
+  // Generate report if none exists
   useEffect(() => {
     if (currentProject && !currentProject.report && !reportGeneratedRef.current) {
       reportGeneratedRef.current = true;
       generateReport('');
     }
   }, [currentProject, generateReport]);
-
-  // Step 2: Trigger map generation when report completes
-  useEffect(() => {
-    // Check if report just completed streaming
-    if (!isGeneratingReport && reportText && !mapGeneratedRef.current) {
-      mapGeneratedRef.current = true;
-      // Generate map with the completed report text
-      generateMap({ projectId, reportText });
-    }
-  }, [isGeneratingReport, reportText, generateMap, projectId]);
-
-  // Also generate map if we have report from database but no map
-  useEffect(() => {
-    if (currentProject?.report && !currentProject?.map && !isGeneratingMap && !streamedMap) {
-      generateMap({ projectId, reportText: currentProject.report });
-    }
-  }, [currentProject, isGeneratingMap, streamedMap, generateMap, projectId]);
 
   // Determine which report text to display
   const displayReportText = useMemo(() => {
@@ -84,21 +56,16 @@ export default function ReportPanel({ projectId }: ReportPanelProps) {
     return '';
   }, [reportText, currentProject?.report]);
 
-  // Determine which map to display
+  // Convert report text to structured map data
   const displayMap = useMemo(() => {
-    // Priority: streaming > database
-    if (streamedMap) {
-      return streamedMap as MapType;
-    }
-    if (currentProject?.map) {
-      return currentProject.map;
+    if (displayReportText) {
+      return parseReportToMap(displayReportText);
     }
     return null;
-  }, [streamedMap, currentProject]);
+  }, [displayReportText]);
 
   const handleRegenerate = () => {
     reportGeneratedRef.current = false;
-    mapGeneratedRef.current = false;
     generateReport('');
   };
 
@@ -106,7 +73,7 @@ export default function ReportPanel({ projectId }: ReportPanelProps) {
     return null;
   }
 
-  const isGenerating = isGeneratingReport || isGeneratingMap;
+  const isGenerating = isGeneratingReport;
 
   return (
     <div className="h-full flex flex-col overflow-hidden relative">
