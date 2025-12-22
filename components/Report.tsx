@@ -14,9 +14,9 @@ interface ReportProps {
 
 export default function Report({ reportText, isGenerating, onToggleView, onRegenerate }: ReportProps) {
   return (
-    <div className="w-full max-w-3xl h-full relative">
-      <Card className="w-full h-full overflow-auto">
-        <CardContent className="px-12">
+    <div className="w-full max-w-3xl h-full relative overflow-hidden pb-2 px-2">
+      <Card className="w-full h-full flex flex-col overflow-hidden">
+        <CardContent className="px-12 overflow-auto flex-1">
           <Streamdown isAnimating={isGenerating}>
             {reportText}
           </Streamdown>
