@@ -21,6 +21,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar"
 
 interface SourceTabProps {
   source: {
@@ -142,36 +151,39 @@ export default function SourcePanel() {
   };
 
   return (
-    <Card
-      className="h-full flex flex-col overflow-hidden p-0 relative"
+    <Sidebar
+      className="top-(--header-height) h-[calc(100svg-var(--header-height))]! pt-0 pr-0"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      variant="floating"
     >
-      {isDragging && (
-        <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 rounded-lg">
-          <FileText className="h-8 w-8 text-muted-foreground" />
-          <div className="text-sm text-muted-foreground">Drop to add to project</div>
+      <SidebarContent>
+        {isDragging && (
+          <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 rounded-lg">
+            <FileText className="h-8 w-8 text-muted-foreground" />
+            <div className="text-sm text-muted-foreground">Drop to add to project</div>
+          </div>
+        )}
+        <div className="flex-1 overflow-auto p-2">
+          {uploadError && (
+            <div className="text-xs text-destructive mb-2 p-2 bg-destructive/10 rounded">
+              {uploadError}
+            </div>
+          )}
+          {isLoading ? (
+            <div className="text-muted-foreground">Loading sources...</div>
+          ) : currentProject?.sources && currentProject.sources.length > 0 ? (
+            <div className="space-y-0.5">
+              {currentProject.sources.map((source) => (
+                <SourceTab key={source.id} source={source} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-muted-foreground">No sources available</div>
+          )}
         </div>
-      )}
-      <CardContent className="flex-1 overflow-auto p-2">
-        {uploadError && (
-          <div className="text-xs text-destructive mb-2 p-2 bg-destructive/10 rounded">
-            {uploadError}
-          </div>
-        )}
-        {isLoading ? (
-          <div className="text-muted-foreground">Loading sources...</div>
-        ) : currentProject?.sources && currentProject.sources.length > 0 ? (
-          <div className="space-y-0.5">
-            {currentProject.sources.map((source) => (
-              <SourceTab key={source.id} source={source} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-muted-foreground">No sources available</div>
-        )}
-      </CardContent>
-    </Card>
+      </SidebarContent>
+    </Sidebar>
   );
 }

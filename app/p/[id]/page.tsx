@@ -5,31 +5,25 @@ import Header from "@/components/Header";
 import ReportPanel from "@/components/ReportPanel";
 import SourcePanel from "@/components/SourcePanel";
 import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
+  SidebarInset,
+  SidebarProvider,
+} from "@/components/ui/sidebar"
 
 export default function ProjectPage() {
   const params = useParams();
   const id = params.id as string;
 
   return (
-    <div className="h-screen flex flex-col">
-      <Header />
-      <div className="flex-1 overflow-hidden">
-        <div className="h-full pb-2 pl-2">
-          <ResizablePanelGroup direction="horizontal" className="h-full">
-            <ResizablePanel defaultSize={30} minSize={20}>
-              <SourcePanel />
-            </ResizablePanel>
-            <ResizableHandle />
-            <ResizablePanel defaultSize={70} minSize={50}>
-              <ReportPanel projectId={id} />
-            </ResizablePanel>
-          </ResizablePanelGroup>
+    <div className="[--header-height:calc(--spacing(12))]">
+      <SidebarProvider className="flex flex-col">
+        <Header />
+        <div className="flex flex-1">
+          <SourcePanel />
+          <SidebarInset>
+            <ReportPanel projectId={id} />
+          </SidebarInset>
         </div>
-      </div>
+      </SidebarProvider>
     </div>
   );
 }

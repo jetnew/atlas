@@ -30,19 +30,21 @@ export const Profile = () => {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild className="cursor-pointer">
-        <Avatar className="shadow-lg">
-          {profileImage && <AvatarImage src={profileImage} alt={initials} />}
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={logout}>
-          <LogOut />
-          Sign Out
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="w-auto ml-auto">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild className="cursor-pointer">
+          <Avatar className="shadow-lg">
+            {profileImage && <AvatarImage src={profileImage} alt={initials} />}
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={logout}>
+            <LogOut />
+            Sign Out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }

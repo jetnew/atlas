@@ -3,11 +3,12 @@
 import { useEffect, useRef, useMemo, useState } from "react";
 import { experimental_useObject as useObject, useCompletion } from "@ai-sdk/react";
 import { Button } from "@/components/ui/button";
-import { Map as MapIcon, NotebookText, RefreshCcw } from "lucide-react";
+import { NotebookText, RefreshCcw } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
 import { mapSchema, Map as MapType } from "@/lib/schemas/report";
 import Map from "@/components/Map";
 import Report from "@/components/Report";
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 interface ReportPanelProps {
   projectId: string;
@@ -109,12 +110,13 @@ export default function ReportPanel({ projectId }: ReportPanelProps) {
 
   return (
     <div className="h-full flex flex-col overflow-hidden relative">
+      <SidebarTrigger className="absolute top-2 left-2 z-10 size-9" />
       {isMapView && (
         <>
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-4 right-4 z-10"
+            className="absolute top-2 right-2 z-10"
             onClick={() => setIsMapView(!isMapView)}
           >
             <NotebookText className="h-4 w-4" />
@@ -123,7 +125,7 @@ export default function ReportPanel({ projectId }: ReportPanelProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="absolute bottom-4 right-4 z-10"
+              className="absolute bottom-2 right-2 z-10"
               onClick={handleRegenerate}
             >
               <RefreshCcw className="h-4 w-4" />
