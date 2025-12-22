@@ -34,6 +34,8 @@ function ProjectCard({ project }: ProjectCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { deleteProject } = useProject();
 
+  const projectTitle = project.map?.report?.title || project.prompt;
+
   const formattedDate = new Date(project.created_at).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
@@ -53,10 +55,10 @@ function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <>
-      <Card className="cursor-pointer hover:shadow-lg transition-shadow w-64 h-48 flex flex-col relative group">
+      <Card className="cursor-pointer hover:shadow-lg transition-shadow w-64 h-40 flex flex-col relative group">
         <Link href={`/p/${project.id}`} className="flex flex-col h-full">
           <CardHeader className="pb-2">
-            <CardTitle className="line-clamp-2 leading-relaxed pb-1 pr-8">{project.prompt}</CardTitle>
+            <CardTitle className="line-clamp-3 leading-relaxed pb-1 pr-8 text-sm">{projectTitle}</CardTitle>
           </CardHeader>
           <CardContent className="grow">
           </CardContent>
