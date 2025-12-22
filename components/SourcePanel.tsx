@@ -54,7 +54,7 @@ function SourceTab({ source }: SourceTabProps) {
     <>
       <div className="w-full flex items-center gap-2 group px-2 py-1 rounded-md hover:bg-accent transition-colors">
         <FileText className="h-4 w-4" />
-        <span className="text-sm flex-1 text-left font-medium">{source.name}</span>
+        <span className="text-sm flex-1 text-left font-medium line-clamp-1">{source.name}</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

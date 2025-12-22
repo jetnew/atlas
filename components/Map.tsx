@@ -184,7 +184,7 @@ export default function Map({ report }: MapProps) {
           minZoom: 1,
         }}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-        minZoom={0.1}
+        minZoom={0.3}
         maxZoom={1.5}
         panOnScroll
         proOptions={{
