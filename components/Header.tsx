@@ -17,7 +17,7 @@ export default function Header() {
             <AvatarImage src="/logo.webp" alt="Atlas" />
           </Avatar>
         </Link>
-        <h1 className="text-sm">{projectTitle}</h1>
+        <h1 className="text-md font-semibold">{projectTitle}</h1>
         <Profile />
       </div>
     </header>

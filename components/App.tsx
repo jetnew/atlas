@@ -25,6 +25,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  SidebarProvider,
+} from "@/components/ui/sidebar";
 
 interface ProjectCardProps {
   project: Project;
@@ -126,26 +129,28 @@ function AppContent() {
   }, [listProjects]);
 
   return (
-    <div className="min-h-screen">
-      <Header />
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">Projects</h1>
-          <Button className="rounded-full" onClick={() => setIsDialogOpen(true)}>
-            <Plus className="h-4 w-4" />
-            New Project
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {projects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-            />
-          ))}
-        </div>
-      </main>
-      <NewProjectDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} />
+    <div className="[--header-height:calc(--spacing(12))]">
+      <SidebarProvider className="flex flex-col min-h-screen">
+        <Header />
+        <main className="container mx-auto px-4 py-8 max-w-7xl flex-1">
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold">Projects</h1>
+            <Button className="rounded-full" onClick={() => setIsDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              New Project
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {projects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+              />
+            ))}
+          </div>
+        </main>
+        <NewProjectDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} />
+      </SidebarProvider>
     </div>
   );
 }
