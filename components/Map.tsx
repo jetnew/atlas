@@ -10,6 +10,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Map as MapType } from "@/lib/schemas/report";
+import ZoomNode from "./ZoomNode";
 
 export const NODE_COLORS = [
   ["#ffe4e6", "#fff1f2"], // rose 100, 50
@@ -19,6 +20,10 @@ export const NODE_COLORS = [
   ["#ede9fe", "#f5f3ff"], // violet 100, 50
   ["#fae8ff", "#fdf4ff"], // fuchsia 100, 50
 ] as const;
+
+const nodeTypes = {
+  zoom: ZoomNode,
+};
 
 interface MapProps {
   report: MapType | null;
@@ -39,9 +44,14 @@ export default function Map({ report }: MapProps) {
     const rootColor = NODE_COLORS[0];
     nodes.push({
       id: rootId,
-      data: { label: report.report.title || "Untitled Report" },
+      data: {
+        label: report.report.title || "Untitled Report",
+        text: report.report.text,
+        hasChildren: report.report.sections.length > 0,
+        isRoot: true,
+      },
       position: { x: 0, y: 0 },
-      type: "input",
+      type: "zoom",
       style: {
         backgroundColor: rootColor[1],
         border: `2px solid ${rootColor[0]}`,
@@ -58,9 +68,14 @@ export default function Map({ report }: MapProps) {
 
       nodes.push({
         id: sectionId,
-        data: { label: section.section.heading || `Section ${sectionIndex + 1}` },
+        data: {
+          label: section.section.heading || `Section ${sectionIndex + 1}`,
+          text: section.section.text,
+          hasChildren: hasSubsections,
+          isRoot: false,
+        },
         position: { x: 0, y: 0 },
-        type: hasSubsections ? "default" : "output",
+        type: "zoom",
         style: {
           backgroundColor: sectionColor[1],
           border: `2px solid ${sectionColor[0]}`,
@@ -88,9 +103,12 @@ export default function Map({ report }: MapProps) {
           id: subsectionId,
           data: {
             label: subsection.subsection.subheading || `Subsection ${subsectionIndex + 1}`,
+            text: subsection.subsection.text,
+            hasChildren: hasSubsubsections,
+            isRoot: false,
           },
           position: { x: 0, y: 0 },
-          type: hasSubsubsections ? "default" : "output",
+          type: "zoom",
           style: {
             backgroundColor: subsectionColor[1],
             border: `2px solid ${subsectionColor[0]}`,
@@ -115,9 +133,12 @@ export default function Map({ report }: MapProps) {
             id: subsubId,
             data: {
               label: subsubsection.subsubheading || `Subsubsection ${subsubIndex + 1}`,
+              text: subsubsection.text,
+              hasChildren: false,
+              isRoot: false,
             },
             position: { x: 0, y: 0 },
-            type: "output",
+            type: "zoom",
             style: {
               backgroundColor: subsubColor[1],
               border: `2px solid ${subsubColor[0]}`,
@@ -143,7 +164,7 @@ export default function Map({ report }: MapProps) {
 
       const root = hierarchy(nodes);
       const treeLayout = tree<Node>()
-        .nodeSize([180, 160])
+        .nodeSize([200, 180])
         .separation((a: HierarchyPointNode<Node>, b: HierarchyPointNode<Node>) => {
           // If nodes share the same parent, use tighter spacing
           if (a.parent === b.parent) {
@@ -157,6 +178,7 @@ export default function Map({ report }: MapProps) {
       layout.descendants().forEach((node: HierarchyPointNode<Node>) => {
         const originalNode = nodes.find((n) => n.id === node.data.id);
         if (originalNode) {
+          // D3 tree layout uses x for horizontal (breadth) and y for vertical (depth)
           originalNode.position = { x: node.x, y: node.y };
         }
       });
@@ -178,6 +200,7 @@ export default function Map({ report }: MapProps) {
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{
           maxZoom: 1,
@@ -185,7 +208,7 @@ export default function Map({ report }: MapProps) {
         }}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         minZoom={0.3}
-        maxZoom={1.5}
+        maxZoom={3}
         panOnScroll
         proOptions={{
           hideAttribution: true,
