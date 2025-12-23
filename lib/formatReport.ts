@@ -17,6 +17,13 @@ export function parseReportToMap(reportText: string): MapType {
     return line.trim().replace(/^#{1,4}\s+/, '');
   };
 
+  // Helper: Check if line is a horizontal rule (---, ***, ___)
+  const isHorizontalRule = (line: string): boolean => {
+    const trimmed = line.trim();
+    // Match --- or *** or ___ (3 or more, with optional spaces between)
+    return /^[-*_]{3,}$/.test(trimmed) || /^([-*_]\s*){3,}$/.test(trimmed);
+  };
+
   // Helper: Flush content buffer to appropriate location
   const flushContentBuffer = () => {
     const content = contentBuffer.join('\n').trim();
@@ -151,6 +158,10 @@ export function parseReportToMap(reportText: string): MapType {
       }
     } else {
       // It's content text
+      if (isHorizontalRule(line)) {
+        // Skip horizontal rules (---, ***, ___)
+        continue;
+      }
       if (hasSeenTitle || !line.trim()) {
         // Add to buffer if we've seen title, or if it's an empty line (preserve spacing)
         contentBuffer.push(line);

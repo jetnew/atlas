@@ -4,7 +4,7 @@ import { memo } from "react";
 import { Handle, useStore, Position } from "@xyflow/react";
 import { Streamdown } from "streamdown";
 
-const zoomSelector = (s: { transform: [number, number, number] }) => s.transform[2] >= 1.4;
+const zoomSelector = (s: { transform: [number, number, number] }) => s.transform[2] >= 1.5;
 
 interface ZoomNodeData {
   label: string;
@@ -25,10 +25,10 @@ const ZoomNode = memo(({ data }: { data: ZoomNodeData }) => {
           <>
             <div className={showContent ? 'block' : 'hidden'}>
               <div className="font-semibold text-[7px] mb-2">
-                <Streamdown>{label}</Streamdown>
+                <Streamdown className="no-margins">{label}</Streamdown>
               </div>
               <div className="text-[7px] text-muted-foreground whitespace-pre-wrap">
-                <Streamdown>{text}</Streamdown>
+                <Streamdown className="no-margins">{text}</Streamdown>
               </div>
             </div>
             <div className={showContent ? 'hidden' : 'block'}>
