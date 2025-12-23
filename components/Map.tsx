@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { stratify, tree, HierarchyPointNode } from "d3-hierarchy";
+import { stratify, tree } from "d3-hierarchy";
 import {
   ReactFlow,
   Node,
@@ -10,7 +10,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Map as MapType } from "@/lib/schemas/report";
-import ZoomNode from "./ZoomNode";
+import MapNode from "./MapNode";
 
 export const NODE_COLORS = [
   ["#ffe4e6", "#fff1f2"], // rose 100, 50
@@ -22,8 +22,23 @@ export const NODE_COLORS = [
 ] as const;
 
 const nodeTypes = {
-  zoom: ZoomNode,
+  map: MapNode,
 };
+
+interface FlatNode {
+  id: string;
+  parentId: string | null;
+  label: string;
+  text?: string;
+  hasChildren: boolean;
+  isRoot: boolean;
+  colorIndex: number;
+}
+
+const NODE_WIDTH = 320;
+const NODE_HEIGHT = 100;
+const HORIZONTAL_SPACING = 0;
+const VERTICAL_SPACING = 120;
 
 interface MapProps {
   report: MapType | null;
@@ -35,27 +50,20 @@ export default function Map({ report }: MapProps) {
       return { nodes: [], edges: [] };
     }
 
-    const nodes: Node[] = [];
+    const flatNodes: FlatNode[] = [];
     const edges: Edge[] = [];
     let nodeId = 0;
 
     // Root node - Title
     const rootId = `node-${nodeId++}`;
-    const rootColor = NODE_COLORS[0];
-    nodes.push({
+    flatNodes.push({
       id: rootId,
-      data: {
-        label: report.report.title || "Untitled Report",
-        text: report.report.text,
-        hasChildren: report.report.sections.length > 0,
-        isRoot: true,
-      },
-      position: { x: 0, y: 0 },
-      type: "zoom",
-      style: {
-        backgroundColor: rootColor[1],
-        border: `2px solid ${rootColor[0]}`,
-      },
+      parentId: null,
+      label: report.report.title || "Untitled Report",
+      text: report.report.text,
+      hasChildren: report.report.sections.length > 0,
+      isRoot: true,
+      colorIndex: 0,
     });
 
     // Section nodes (children of root)
@@ -64,22 +72,16 @@ export default function Map({ report }: MapProps) {
 
       const sectionId = `node-${nodeId++}`;
       const hasSubsections = section.section.content && section.section.content.length > 0;
-      const sectionColor = NODE_COLORS[(sectionIndex + 1) % NODE_COLORS.length];
+      const colorIndex = (sectionIndex + 1) % NODE_COLORS.length;
 
-      nodes.push({
+      flatNodes.push({
         id: sectionId,
-        data: {
-          label: section.section.heading || `Section ${sectionIndex + 1}`,
-          text: section.section.text,
-          hasChildren: hasSubsections,
-          isRoot: false,
-        },
-        position: { x: 0, y: 0 },
-        type: "zoom",
-        style: {
-          backgroundColor: sectionColor[1],
-          border: `2px solid ${sectionColor[0]}`,
-        },
+        parentId: rootId,
+        label: section.section.heading || `Section ${sectionIndex + 1}`,
+        text: section.section.text,
+        hasChildren: hasSubsections,
+        isRoot: false,
+        colorIndex,
       });
 
       edges.push({
@@ -97,22 +99,15 @@ export default function Map({ report }: MapProps) {
 
         const subsectionId = `node-${nodeId++}`;
         const hasSubsubsections = subsection.subsection.subsubsection && subsection.subsection.subsubsection.length > 0;
-        const subsectionColor = NODE_COLORS[(sectionIndex + 1) % NODE_COLORS.length];
 
-        nodes.push({
+        flatNodes.push({
           id: subsectionId,
-          data: {
-            label: subsection.subsection.subheading || `Subsection ${subsectionIndex + 1}`,
-            text: subsection.subsection.text,
-            hasChildren: hasSubsubsections,
-            isRoot: false,
-          },
-          position: { x: 0, y: 0 },
-          type: "zoom",
-          style: {
-            backgroundColor: subsectionColor[1],
-            border: `2px solid ${subsectionColor[0]}`,
-          },
+          parentId: sectionId,
+          label: subsection.subsection.subheading || `Subsection ${subsectionIndex + 1}`,
+          text: subsection.subsection.text,
+          hasChildren: hasSubsubsections,
+          isRoot: false,
+          colorIndex,
         });
 
         edges.push({
@@ -127,22 +122,15 @@ export default function Map({ report }: MapProps) {
         if (!subsection.subsection.subsubsection) return;
         subsection.subsection.subsubsection.forEach((subsubsection, subsubIndex) => {
           const subsubId = `node-${nodeId++}`;
-          const subsubColor = NODE_COLORS[(sectionIndex + 1) % NODE_COLORS.length];
 
-          nodes.push({
+          flatNodes.push({
             id: subsubId,
-            data: {
-              label: subsubsection.subsubheading || `Subsubsection ${subsubIndex + 1}`,
-              text: subsubsection.text,
-              hasChildren: false,
-              isRoot: false,
-            },
-            position: { x: 0, y: 0 },
-            type: "zoom",
-            style: {
-              backgroundColor: subsubColor[1],
-              border: `2px solid ${subsubColor[0]}`,
-            },
+            parentId: subsectionId,
+            label: subsubsection.subsubheading || `Subsubsection ${subsubIndex + 1}`,
+            text: subsubsection.text,
+            hasChildren: false,
+            isRoot: false,
+            colorIndex,
           });
 
           edges.push({
@@ -156,33 +144,40 @@ export default function Map({ report }: MapProps) {
       });
     });
 
-    // Apply D3 tree layout
-    if (nodes.length > 0) {
-      const hierarchy = stratify<Node>()
-        .id((node: Node) => node.id)
-        .parentId((node: Node) => edges.find((edge) => edge.target === node.id)?.source);
+    // Build hierarchy using d3-hierarchy stratify
+    const root = stratify<FlatNode>()
+      .id((d) => d.id)
+      .parentId((d) => d.parentId)(flatNodes);
 
-      const root = hierarchy(nodes);
-      const treeLayout = tree<Node>()
-        .nodeSize([200, 180])
-        .separation((a: HierarchyPointNode<Node>, b: HierarchyPointNode<Node>) => {
-          // If nodes share the same parent, use tighter spacing
-          if (a.parent === b.parent) {
-            return 0.9;
-          }
-          // If they're in different subtrees at the top level, use even tighter spacing
-          return 1;
-        });
-      const layout = treeLayout(root);
-
-      layout.descendants().forEach((node: HierarchyPointNode<Node>) => {
-        const originalNode = nodes.find((n) => n.id === node.data.id);
-        if (originalNode) {
-          // D3 tree layout uses x for horizontal (breadth) and y for vertical (depth)
-          originalNode.position = { x: node.x, y: node.y };
-        }
+    // Create tree layout with dynamic separation based on subtree size
+    const treeLayout = tree<FlatNode>()
+      .nodeSize([NODE_WIDTH + HORIZONTAL_SPACING, NODE_HEIGHT + VERTICAL_SPACING])
+      .separation((a, b) => {
+        return (a.leaves().length + b.leaves().length) / 2
       });
-    }
+
+    // Apply layout
+    treeLayout(root);
+
+    // Convert to ReactFlow nodes with computed positions
+    const nodes: Node[] = root.descendants().map((d) => {
+      const color = NODE_COLORS[d.data.colorIndex];
+      return {
+        id: d.data.id,
+        data: {
+          label: d.data.label,
+          text: d.data.text,
+          hasChildren: d.data.hasChildren,
+          isRoot: d.data.isRoot,
+        },
+        position: { x: d.x!, y: d.y! },
+        type: "map",
+        style: {
+          backgroundColor: color[1],
+          border: `2px solid ${color[0]}`,
+        },
+      };
+    });
 
     return { nodes, edges };
   }, [report]);
