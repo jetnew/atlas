@@ -17,7 +17,7 @@ async function generateReport(
       ).join('\n\n')}`
     : '';
 
-  const systemPrompt = `You are a research assistant, tasked to generate a comprehensive report on the user's project. You are given the user's prompt, the summaries of the sources attached by the user for the project, and the clarifications (questions and answers) to the user's prompt. Your goal is to generate a comprehensive, detailed, in-depth report on the user's project, highlighting key insights and details. Structure the report into an organized structure, formatting the report with the project title, section headings, sub-section sub-headings, sub-sub-section sub-sub-headings, etc.
+  const systemPrompt = `You are a research assistant, tasked to generate a comprehensive report on the user's project. You are given the user's prompt, the summaries of the sources attached by the user for the project, and the clarifications (questions and answers) to the user's prompt. Your goal is to generate a comprehensive, detailed, in-depth report on the user's project, highlighting key insights and details. Structure the report into an organized structure, formatting the report with the project title with '# {title}', section headings with '## {heading}', sub-section sub-headings with '### {subheading}', sub-sub-section sub-sub-headings with '#### {subsubheading}', etc.
 
 User prompt: ${prompt}
 

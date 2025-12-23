@@ -7,6 +7,7 @@ import {
   Node,
   Edge,
   MarkerType,
+  SelectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Map as MapType } from "@/lib/schemas/report";
