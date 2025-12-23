@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import Header from "@/components/Header";
 import ReportPanel from "@/components/ReportPanel";
 import SourcePanel from "@/components/SourcePanel";
+import ChatPanel from "@/components/ChatPanel";
 import {
   SidebarInset,
   SidebarProvider,
@@ -22,6 +23,7 @@ export default function ProjectPage() {
           <SidebarInset>
             <ReportPanel projectId={id} />
           </SidebarInset>
+          <ChatPanel />
         </div>
       </SidebarProvider>
     </div>

@@ -157,6 +157,7 @@ export default function SourcePanel() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       variant="floating"
+      keyboardShortcut="b"
     >
       <SidebarContent>
         {isDragging && (
