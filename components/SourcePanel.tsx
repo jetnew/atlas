@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useProject } from "@/components/ProjectContext";
-import { FileText, Ellipsis } from "lucide-react";
+import { FileText, Ellipsis, PanelLeftIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,11 +23,7 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+  useSidebarToggle,
 } from "@/components/ui/sidebar"
 
 interface SourceTabProps {
@@ -111,8 +106,17 @@ function SourceTab({ source }: SourceTabProps) {
   );
 }
 
+function ToggleButton() {
+  const { toggle } = useSidebarToggle();
+  return (
+    <Button variant="ghost" size="icon" className="size-9" onClick={toggle}>
+      <PanelLeftIcon className="h-4 w-4" />
+    </Button>
+  );
+}
+
 export default function SourcePanel() {
-  const { currentProject, isLoading, uploadFilesToProject } = useProject();
+  const { currentProject, uploadFilesToProject, isLoading } = useProject();
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -159,7 +163,7 @@ export default function SourcePanel() {
       variant="floating"
       keyboardShortcut="b"
     >
-      <SidebarContent>
+      <SidebarContent className="relative">
         {isDragging && (
           <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 rounded-lg">
             <FileText className="h-8 w-8 text-muted-foreground" />
@@ -167,6 +171,9 @@ export default function SourcePanel() {
           </div>
         )}
         <div className="flex-1 overflow-auto p-2">
+          <div className="flex justify-end">
+            <ToggleButton />
+          </div>
           {uploadError && (
             <div className="text-xs text-destructive mb-2 p-2 bg-destructive/10 rounded">
               {uploadError}

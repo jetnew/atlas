@@ -32,23 +32,44 @@ export default function MapPanel({ projectId }: MapPanelProps) {
       }
     };
 
-    // Initial check
-    checkSidebarStates();
+    // Create observer to watch for attribute changes on sidebars
+    const attributeObserver = new MutationObserver(checkSidebarStates);
 
-    // Create observer to watch for attribute changes
-    const observer = new MutationObserver(checkSidebarStates);
+    // Function to set up observers on sidebar elements
+    const setupObservers = () => {
+      const leftSidebar = document.querySelector('[data-slot="sidebar"][data-side="left"]');
+      const rightSidebar = document.querySelector('[data-slot="sidebar"][data-side="right"]');
 
-    const leftSidebar = document.querySelector('[data-slot="sidebar"][data-side="left"]');
-    const rightSidebar = document.querySelector('[data-slot="sidebar"][data-side="right"]');
+      if (leftSidebar) {
+        attributeObserver.observe(leftSidebar, { attributes: true, attributeFilter: ['data-state'] });
+      }
+      if (rightSidebar) {
+        attributeObserver.observe(rightSidebar, { attributes: true, attributeFilter: ['data-state'] });
+      }
 
-    if (leftSidebar) {
-      observer.observe(leftSidebar, { attributes: true, attributeFilter: ['data-state'] });
+      // Check initial states
+      checkSidebarStates();
+
+      return leftSidebar && rightSidebar;
+    };
+
+    // Try to set up observers immediately
+    if (!setupObservers()) {
+      // If sidebars aren't found, observe DOM for when they're added
+      const domObserver = new MutationObserver(() => {
+        if (setupObservers()) {
+          domObserver.disconnect();
+        }
+      });
+      domObserver.observe(document.body, { childList: true, subtree: true });
+
+      return () => {
+        attributeObserver.disconnect();
+        domObserver.disconnect();
+      };
     }
-    if (rightSidebar) {
-      observer.observe(rightSidebar, { attributes: true, attributeFilter: ['data-state'] });
-    }
 
-    return () => observer.disconnect();
+    return () => attributeObserver.disconnect();
   }, []);
 
   // Hook: Generate markdown text report
@@ -137,22 +158,26 @@ export default function MapPanel({ projectId }: MapPanelProps) {
         right: rightSidebarOpen ? `calc(${sidebarWidth} + ${sidebarPadding})` : '0',
       }}
     >
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute top-2 left-2 z-10 size-9"
-        onClick={toggleLeftSidebar}
-      >
-        <PanelLeftIcon className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute top-2 right-2 z-10 size-9"
-        onClick={toggleRightSidebar}
-      >
-        <PanelRightIcon className="h-4 w-4" />
-      </Button>
+      {!leftSidebarOpen && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-2 left-2 z-10 size-9"
+          onClick={toggleLeftSidebar}
+        >
+          <PanelLeftIcon className="h-4 w-4" />
+        </Button>
+      )}
+      {!rightSidebarOpen && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-2 right-2 z-10 size-9"
+          onClick={toggleRightSidebar}
+        >
+          <PanelRightIcon className="h-4 w-4" />
+        </Button>
+      )}
       {!isGenerating && (
         <Button
           variant="ghost"
