@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useProject } from "@/components/ProjectContext";
 import { FileText, Ellipsis, PanelLeftIcon, ArrowLeft } from "lucide-react";
@@ -25,6 +25,7 @@ import {
   SidebarContent,
   useSidebarToggle,
 } from "@/components/ui/sidebar"
+import { PdfViewer } from "@/components/PdfViewer"
 
 interface SourceTabProps {
   source: {
@@ -124,9 +125,16 @@ function ToggleButton({ onToggle }: { onToggle?: () => void }) {
 
 type ViewState = "default" | "source";
 
+interface SelectedSource {
+  id: string;
+  name: string;
+  storage_path: string;
+}
+
 export default function SourcePanel() {
   const { currentProject, uploadFilesToProject, isLoading } = useProject();
   const [view, setView] = useState<ViewState>("default");
+  const [selectedSource, setSelectedSource] = useState<SelectedSource | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -167,14 +175,17 @@ export default function SourcePanel() {
   return (
     <Sidebar
       className="top-(--header-height) h-[calc(100svg-var(--header-height))]! pt-0 pr-0"
-      style={{ "--sidebar-width": view === "source" ? "26rem" : "16rem" } as React.CSSProperties}
+      style={{ "--sidebar-width": view === "source" ? "40rem" : "16rem" } as React.CSSProperties}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       variant="floating"
       keyboardShortcut="b"
       onOpenChange={(open) => {
-        if (!open) setView("default");
+        if (!open) {
+          setView("default");
+          setSelectedSource(null);
+        }
       }}
     >
       <SidebarContent className="relative">
@@ -192,7 +203,10 @@ export default function SourcePanel() {
                   variant="ghost"
                   size="icon"
                   className="size-9"
-                  onClick={() => setView("default")}
+                  onClick={() => {
+                    setView("default");
+                    setSelectedSource(null);
+                  }}
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
@@ -207,20 +221,32 @@ export default function SourcePanel() {
           )}
           {view === "default" && (
             isLoading ? (
-              <div className="text-muted-foreground">Loading sources...</div>
+              null
             ) : currentProject?.sources && currentProject.sources.length > 0 ? (
               <div className="space-y-0.5">
                 {currentProject.sources.map((source) => (
                   <SourceTab
                     key={source.id}
                     source={source}
-                    onClick={() => setView("source")}
+                    onClick={() => {
+                      if (source.storage_path) {
+                        setSelectedSource({
+                          id: source.id,
+                          name: source.name,
+                          storage_path: source.storage_path,
+                        });
+                        setView("source");
+                      }
+                    }}
                   />
                 ))}
               </div>
             ) : (
-              <div className="text-muted-foreground">No sources available</div>
+              null
             )
+          )}
+          {view === "source" && selectedSource && (
+            <PdfViewer storagePath={selectedSource.storage_path} />
           )}
         </div>
       </SidebarContent>

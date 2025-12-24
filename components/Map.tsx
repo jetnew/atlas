@@ -177,9 +177,7 @@ export default function Map({ report }: MapProps) {
 
   if (!report) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        No report data available
-      </div>
+      null
     );
   }
 
@@ -198,7 +196,6 @@ export default function Map({ report }: MapProps) {
         minZoom={0.3}
         maxZoom={3}
         panOnScroll
-        selectionMode={SelectionMode.Partial}
         proOptions={{
           hideAttribution: true,
         }}
