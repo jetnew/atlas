@@ -21,7 +21,6 @@ export default function ChatPanel() {
   return (
     <Sidebar
       className="top-(--header-height) h-[calc(100svg-var(--header-height))]! pt-0 pl-0"
-      // style={{ "--sidebar-width": "24rem" } as React.CSSProperties}
       side="right"
       variant="floating"
       keyboardShortcut="l"
@@ -32,6 +31,6 @@ export default function ChatPanel() {
           {/* Chat content will go here */}
         </div>
       </SidebarContent>
-    </Sidebar>
+    </Sidebar >
   );
 }

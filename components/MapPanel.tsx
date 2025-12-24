@@ -178,7 +178,8 @@ export default function MapPanel({ projectId }: MapPanelProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="absolute bottom-2 right-2 z-10"
+          className="absolute bottom-2 z-10 transition-[right] duration-200 ease-linear"
+          style={{ right: rightSidebarOpen ? `calc(${sidebarWidth} + ${sidebarPadding})` : '0.5rem' }}
           onClick={handleRegenerate}
         >
           <RefreshCcw className="h-4 w-4" />

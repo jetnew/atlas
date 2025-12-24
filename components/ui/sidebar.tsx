@@ -158,7 +158,6 @@ function Sidebar({
   children,
   keyboardShortcut,
   defaultOpen = true,
-  width,
   ...props
 }: React.ComponentProps<"div"> & {
   side?: "left" | "right"
