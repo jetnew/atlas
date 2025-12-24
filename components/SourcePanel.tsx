@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useProject } from "@/components/ProjectContext";
-import { FileText, Ellipsis, PanelLeftIcon } from "lucide-react";
+import { FileText, Ellipsis, PanelLeftIcon, ArrowLeft } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -122,11 +122,13 @@ function ToggleButton({ onToggle }: { onToggle?: () => void }) {
   );
 }
 
+type ViewState = "default" | "source";
+
 export default function SourcePanel() {
   const { currentProject, uploadFilesToProject, isLoading } = useProject();
+  const [view, setView] = useState<ViewState>("default");
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -165,12 +167,15 @@ export default function SourcePanel() {
   return (
     <Sidebar
       className="top-(--header-height) h-[calc(100svg-var(--header-height))]! pt-0 pr-0"
-      style={{ "--sidebar-width": isExpanded ? "32rem" : "16rem" } as React.CSSProperties}
+      style={{ "--sidebar-width": view === "source" ? "26rem" : "16rem" } as React.CSSProperties}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       variant="floating"
       keyboardShortcut="b"
+      onOpenChange={(open) => {
+        if (!open) setView("default");
+      }}
     >
       <SidebarContent className="relative">
         {isDragging && (
@@ -180,28 +185,42 @@ export default function SourcePanel() {
           </div>
         )}
         <div className="flex-1 overflow-auto p-2">
-          <div className="flex justify-end">
-            <ToggleButton onToggle={() => setIsExpanded(false)} />
+          <div className="flex justify-between">
+            <div className="flex">
+              {view === "source" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-9"
+                  onClick={() => setView("default")}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <ToggleButton onToggle={() => setView("default")} />
           </div>
           {uploadError && (
             <div className="text-xs text-destructive mb-2 p-2 bg-destructive/10 rounded">
               {uploadError}
             </div>
           )}
-          {isLoading ? (
-            <div className="text-muted-foreground">Loading sources...</div>
-          ) : currentProject?.sources && currentProject.sources.length > 0 ? (
-            <div className="space-y-0.5">
-              {currentProject.sources.map((source) => (
-                <SourceTab
-                  key={source.id}
-                  source={source}
-                  onClick={() => setIsExpanded(!isExpanded)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-muted-foreground">No sources available</div>
+          {view === "default" && (
+            isLoading ? (
+              <div className="text-muted-foreground">Loading sources...</div>
+            ) : currentProject?.sources && currentProject.sources.length > 0 ? (
+              <div className="space-y-0.5">
+                {currentProject.sources.map((source) => (
+                  <SourceTab
+                    key={source.id}
+                    source={source}
+                    onClick={() => setView("source")}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-muted-foreground">No sources available</div>
+            )
           )}
         </div>
       </SidebarContent>

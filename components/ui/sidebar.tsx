@@ -158,6 +158,7 @@ function Sidebar({
   children,
   keyboardShortcut,
   defaultOpen = true,
+  onOpenChange,
   ...props
 }: React.ComponentProps<"div"> & {
   side?: "left" | "right"
@@ -166,11 +167,23 @@ function Sidebar({
   keyboardShortcut?: string
   defaultOpen?: boolean
   width?: string
+  onOpenChange?: (open: boolean) => void
 }) {
   const { isMobile } = useSidebar()
   const [open, setOpen] = React.useState(defaultOpen)
   const [openMobile, setOpenMobile] = React.useState(false)
   const state = open ? "expanded" : "collapsed"
+
+  // Call onOpenChange after state changes
+  const isFirstRender = React.useRef(true)
+  React.useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    const currentOpen = isMobile ? openMobile : open
+    onOpenChange?.(currentOpen)
+  }, [open, openMobile, isMobile, onOpenChange])
 
   // Toggle function for this specific sidebar
   const toggle = React.useCallback(() => {
