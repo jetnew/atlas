@@ -196,13 +196,13 @@ export default function SourcePanel() {
           </div>
         )}
         <div className="flex-1 flex flex-col overflow-hidden p-2">
-          <div className="flex justify-between">
-            <div className="flex">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center flex-1 min-w-0">
               {view === "source" && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-9"
+                  className="size-9 shrink-0"
                   onClick={() => {
                     setView("default");
                     setSelectedSource(null);
@@ -210,6 +210,11 @@ export default function SourcePanel() {
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
+              )}
+              {view === "source" && selectedSource && (
+                <span className="text-sm font-medium truncate flex-1 text-center pr-9">
+                  {selectedSource.name}
+                </span>
               )}
             </div>
             <ToggleButton onToggle={() => setView("default")} />

@@ -78,7 +78,7 @@ export const PdfViewer = ({ storagePath }: PdfViewerProps) => {
   }
 
   if (isEngineLoading || !engine || !pdfUrl || !plugins) {
-    return <div className="p-4 text-muted-foreground">Loading PDF...</div>;
+    return null;
   }
 
   // Wrap UI with the <EmbedPDF> provider
