@@ -40,6 +40,7 @@ export default function ChatPanel() {
   const [message, setMessage] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string>("");
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validateAndAddFiles = (files: File[]) => {
@@ -91,6 +92,27 @@ export default function ChatPanel() {
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    validateAndAddFiles(files);
+  };
+
   return (
     <Sidebar
       className="top-(--header-height) h-[calc(100svg-var(--header-height))]! pt-0 pl-0"
@@ -101,7 +123,16 @@ export default function ChatPanel() {
       onOpenChange={(open) => {
         if (!open) setView("default");
       }}
+      onDragOver={view === "chat" ? handleDragOver : undefined}
+      onDragLeave={view === "chat" ? handleDragLeave : undefined}
+      onDrop={view === "chat" ? handleDrop : undefined}
     >
+      {isDragging && view === "chat" && (
+        <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 rounded-lg">
+          <FileText className="h-8 w-8 text-muted-foreground" />
+          <div className="text-sm text-muted-foreground">Drop to attach files</div>
+        </div>
+      )}
       <SidebarContent className="relative">
         <div className="flex-1 overflow-auto p-2">
           <div className="flex justify-between">
@@ -141,7 +172,7 @@ export default function ChatPanel() {
             className="sr-only"
             aria-label="Upload files"
           />
-          <InputGroup>
+          <InputGroup className="bg-white">
             <InputGroupTextarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
