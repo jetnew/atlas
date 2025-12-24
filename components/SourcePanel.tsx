@@ -56,7 +56,7 @@ function SourceTab({ source }: SourceTabProps) {
 
   return (
     <>
-      <div className="w-full flex items-center gap-2 group px-2 py-1 rounded-md hover:bg-accent transition-colors">
+      <div className="w-full flex items-center gap-2 group/source px-2 py-1 rounded-md hover:bg-accent transition-colors">
         <FileText className="h-4 w-4" />
         <span className="text-sm flex-1 text-left font-medium line-clamp-1">{source.name}</span>
         <DropdownMenu>
@@ -64,7 +64,7 @@ function SourceTab({ source }: SourceTabProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-6 w-6 opacity-0 group-hover/source:opacity-100 transition-opacity"
               onClick={(e) => {
                 e.stopPropagation();
               }}
