@@ -188,14 +188,14 @@ export default function SourcePanel() {
         }
       }}
     >
-      <SidebarContent className="relative">
+      <SidebarContent className="relative flex flex-col h-full">
         {isDragging && (
           <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 rounded-lg">
             <FileText className="h-8 w-8 text-muted-foreground" />
             <div className="text-sm text-muted-foreground">Drop to add to project</div>
           </div>
         )}
-        <div className="flex-1 overflow-auto p-2">
+        <div className="flex-1 flex flex-col overflow-hidden p-2">
           <div className="flex justify-between">
             <div className="flex">
               {view === "source" && (
@@ -246,7 +246,9 @@ export default function SourcePanel() {
             )
           )}
           {view === "source" && selectedSource && (
-            <PdfViewer storagePath={selectedSource.storage_path} />
+            <div className="flex-1 min-h-0">
+              <PdfViewer storagePath={selectedSource.storage_path} />
+            </div>
           )}
         </div>
       </SidebarContent>

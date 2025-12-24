@@ -11,6 +11,7 @@ import {
   DocumentManagerPluginPackage,
 } from '@embedpdf/plugin-document-manager/react';
 import { RenderLayer, RenderPluginPackage } from '@embedpdf/plugin-render/react';
+import { ZoomPluginPackage, ZoomMode } from '@embedpdf/plugin-zoom/react';
 import { getFileUrl } from '@/lib/supabase/storage';
 
 interface PdfViewerProps {
@@ -66,6 +67,9 @@ export const PdfViewer = ({ storagePath }: PdfViewerProps) => {
       createPluginRegistration(ViewportPluginPackage),
       createPluginRegistration(ScrollPluginPackage),
       createPluginRegistration(RenderPluginPackage),
+      createPluginRegistration(ZoomPluginPackage, {
+        defaultZoomLevel: ZoomMode.FitWidth,
+      }),
     ];
   }, [pdfUrl]);
 
@@ -79,7 +83,7 @@ export const PdfViewer = ({ storagePath }: PdfViewerProps) => {
 
   // Wrap UI with the <EmbedPDF> provider
   return (
-    <div style={{ height: '500px' }}>
+    <div className="h-full">
       <EmbedPDF engine={engine} plugins={plugins}>
         {({ activeDocumentId }) =>
           activeDocumentId && (
