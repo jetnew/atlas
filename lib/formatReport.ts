@@ -1,6 +1,24 @@
 import { Report, Map as MapType } from '@/lib/schemas/report';
 
 /**
+ * Extracts the title (first # heading) from a markdown report string.
+ * Returns null if no title is found.
+ */
+export function parseReportToTitle(reportText: string | null | undefined): string | null {
+  if (!reportText) return null;
+
+  const lines = reportText.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const match = trimmed.match(/^#\s+(.+)$/);
+    if (match) {
+      return match[1].trim();
+    }
+  }
+  return null;
+}
+
+/**
  * Parses a markdown report string into structured map data.
  * Supports strict hierarchy with promotion for orphaned headings.
  */

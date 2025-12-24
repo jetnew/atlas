@@ -4,10 +4,11 @@ import { Profile } from "@/components/Profile";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { useProject } from "@/components/ProjectContext";
+import { parseReportToTitle } from "@/lib/formatReport";
 
 export default function Header() {
   const { currentProject } = useProject();
-  const projectTitle = currentProject?.map?.report?.title || "Atlas";
+  const projectTitle = parseReportToTitle(currentProject?.report) || "Atlas";
 
   return (
     <header className="sticky top-0 z-50 flex w-full items-center">

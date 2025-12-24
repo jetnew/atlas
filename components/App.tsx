@@ -9,6 +9,7 @@ import { Project } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Ellipsis, Plus } from "lucide-react";
+import { parseReportToTitle } from "@/lib/formatReport";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,7 +38,7 @@ function ProjectCard({ project }: ProjectCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { deleteProject } = useProject();
 
-  const projectTitle = project.map?.report?.title || project.prompt;
+  const projectTitle = parseReportToTitle(project.report) || project.prompt;
 
   const formattedDate = new Date(project.created_at).toLocaleDateString('en-US', {
     year: 'numeric',
