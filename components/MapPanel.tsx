@@ -3,20 +3,18 @@
 import { useEffect, useRef, useMemo, useState } from "react";
 import { useCompletion } from "@ai-sdk/react";
 import { Button } from "@/components/ui/button";
-import { NotebookText, RefreshCcw, PanelLeftIcon, PanelRightIcon } from "lucide-react";
+import { RefreshCcw, PanelLeftIcon, PanelRightIcon } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
 import { parseReportToMap } from "@/lib/formatReport";
 import Map from "@/components/Map";
-import Report from "@/components/Report";
 
-interface ReportPanelProps {
+interface MapPanelProps {
   projectId: string;
 }
 
-export default function ReportPanel({ projectId }: ReportPanelProps) {
+export default function MapPanel({ projectId }: MapPanelProps) {
   const { isLoading, error, getProjectData, currentProject } = useProject();
   const reportGeneratedRef = useRef(false);
-  const [isMapView, setIsMapView] = useState(true);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
 
@@ -150,44 +148,23 @@ export default function ReportPanel({ projectId }: ReportPanelProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-2 right-12 z-10 size-9"
+        className="absolute top-2 right-2 z-10 size-9"
         onClick={toggleRightSidebar}
       >
         <PanelRightIcon className="h-4 w-4" />
       </Button>
-      {isMapView && (
-        <>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-2 right-2 z-10"
-            onClick={() => setIsMapView(!isMapView)}
-          >
-            <NotebookText className="h-4 w-4" />
-          </Button>
-          {!isGenerating && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute bottom-2 right-2 z-10"
-              onClick={handleRegenerate}
-            >
-              <RefreshCcw className="h-4 w-4" />
-            </Button>
-          )}
-        </>
+      {!isGenerating && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute bottom-2 right-2 z-10"
+          onClick={handleRegenerate}
+        >
+          <RefreshCcw className="h-4 w-4" />
+        </Button>
       )}
       <div className="flex-1 overflow-auto flex justify-center">
-        {isMapView ? (
-          <Map report={displayMap} />
-        ) : (
-          <Report
-            reportText={displayReportText}
-            isGenerating={isGeneratingReport}
-            onToggleView={() => setIsMapView(!isMapView)}
-            onRegenerate={handleRegenerate}
-          />
-        )}
+        <Map report={displayMap} />
       </div>
     </div>
   );

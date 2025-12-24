@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Header from "@/components/Header";
-import ReportPanel from "@/components/ReportPanel";
+import MapPanel from "@/components/MapPanel";
 import SourcePanel from "@/components/SourcePanel";
 import ChatPanel from "@/components/ChatPanel";
 import {
@@ -20,7 +20,7 @@ export default function ProjectPage() {
         <div className="flex-1 overflow-hidden relative">
           <SourcePanel />
           <ChatPanel />
-          <ReportPanel projectId={id} />
+          <MapPanel projectId={id} />
         </div>
       </SidebarProvider>
     </div>
