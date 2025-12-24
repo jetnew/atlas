@@ -33,9 +33,10 @@ interface SourceTabProps {
     summary?: string | null;
     storage_path?: string | null;
   };
+  onClick?: () => void;
 }
 
-function SourceTab({ source }: SourceTabProps) {
+function SourceTab({ source, onClick }: SourceTabProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { deleteSource } = useProject();
 
@@ -56,7 +57,10 @@ function SourceTab({ source }: SourceTabProps) {
 
   return (
     <>
-      <div className="w-full flex items-center gap-2 group/source px-2 py-1 rounded-md hover:bg-accent transition-colors">
+      <div
+        className="w-full flex items-center gap-2 group/source px-2 py-1 rounded-md hover:bg-accent transition-colors cursor-pointer"
+        onClick={onClick}
+      >
         <FileText className="h-4 w-4" />
         <span className="text-sm flex-1 text-left font-medium line-clamp-1">{source.name}</span>
         <DropdownMenu>
@@ -119,6 +123,7 @@ export default function SourcePanel() {
   const { currentProject, uploadFilesToProject, isLoading } = useProject();
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -157,6 +162,7 @@ export default function SourcePanel() {
   return (
     <Sidebar
       className="top-(--header-height) h-[calc(100svg-var(--header-height))]! pt-0 pr-0"
+      style={{ "--sidebar-width": isExpanded ? "32rem" : "16rem" } as React.CSSProperties}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -184,7 +190,11 @@ export default function SourcePanel() {
           ) : currentProject?.sources && currentProject.sources.length > 0 ? (
             <div className="space-y-0.5">
               {currentProject.sources.map((source) => (
-                <SourceTab key={source.id} source={source} />
+                <SourceTab
+                  key={source.id}
+                  source={source}
+                  onClick={() => setIsExpanded(!isExpanded)}
+                />
               ))}
             </div>
           ) : (

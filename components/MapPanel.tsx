@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useMemo, useState } from "react";
+import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import { useCompletion } from "@ai-sdk/react";
 import { Button } from "@/components/ui/button";
-import { RefreshCcw, PanelLeftIcon, PanelRightIcon } from "lucide-react";
+import { PanelLeftIcon, PanelRightIcon } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
+import { useReport } from "@/components/ReportContext";
 import { parseReportToMap } from "@/lib/formatReport";
 import Map from "@/components/Map";
 
@@ -14,6 +15,7 @@ interface MapPanelProps {
 
 export default function MapPanel({ projectId }: MapPanelProps) {
   const { isLoading, error, getProjectData, currentProject } = useProject();
+  const { setIsGenerating, setRegenerate } = useReport();
   const reportGeneratedRef = useRef(false);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
@@ -117,20 +119,25 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     return null;
   }, [displayReportText]);
 
-  const handleRegenerate = () => {
+  const handleRegenerate = useCallback(() => {
     reportGeneratedRef.current = false;
     generateReport('');
-  };
+  }, [generateReport]);
+
+  // Register regenerate function with context
+  useEffect(() => {
+    setRegenerate(handleRegenerate);
+    return () => setRegenerate(null);
+  }, [handleRegenerate, setRegenerate]);
+
+  // Sync isGenerating state with context
+  useEffect(() => {
+    setIsGenerating(isGeneratingReport);
+  }, [isGeneratingReport, setIsGenerating]);
 
   if (isLoading || error) {
     return null;
   }
-
-  const isGenerating = isGeneratingReport;
-
-  // Calculate sidebar widths (matching sidebar.tsx constants)
-  const sidebarWidth = "16rem"; // --sidebar-width
-  const sidebarPadding = "0.5rem"; // p-2 = 0.5rem on each side
 
   const toggleLeftSidebar = () => {
     const event = new KeyboardEvent('keydown', {
@@ -172,17 +179,6 @@ export default function MapPanel({ projectId }: MapPanelProps) {
           onClick={toggleRightSidebar}
         >
           <PanelRightIcon className="h-4 w-4" />
-        </Button>
-      )}
-      {!isGenerating && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute bottom-2 z-10 transition-[right] duration-200 ease-linear"
-          style={{ right: rightSidebarOpen ? `calc(${sidebarWidth} + ${sidebarPadding})` : '0.5rem' }}
-          onClick={handleRegenerate}
-        >
-          <RefreshCcw className="h-4 w-4" />
         </Button>
       )}
       <div className="flex-1 overflow-auto flex justify-center">
