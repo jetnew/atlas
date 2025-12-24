@@ -206,6 +206,7 @@ export default function Map({ report }: MapProps) {
         minZoom={0.3}
         maxZoom={3}
         panOnScroll
+        selectionMode={SelectionMode.Partial}
         proOptions={{
           hideAttribution: true,
         }}

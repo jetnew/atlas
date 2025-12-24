@@ -17,10 +17,10 @@ const MapNode = memo(({ data }: { data: MapNodeData }) => {
   return (
     <>
       {!isRoot && <Handle type="target" position={Position.Top} />}
-      <div className="flex flex-col gap-2 p-3 w-[300px]">
+      <div className={`flex flex-col gap-2 p-3 ${text ? "w-[300px]" : "w-[250px]"}`}>
         {text ? (
           <>
-            <div className="font-semibold text-md mb-2">
+            <div className="font-medium text-sm mb-2">
               <Streamdown className="no-margins">{label}</Streamdown>
             </div>
             <div className="text-xs text-muted-foreground whitespace-pre-wrap">
@@ -28,7 +28,7 @@ const MapNode = memo(({ data }: { data: MapNodeData }) => {
             </div>
           </>
         ) : (
-          <div className="font-medium text-md text-center">
+          <div className="font-semibold text-md text-center">
             <Streamdown>{label}</Streamdown>
           </div>
         )}
