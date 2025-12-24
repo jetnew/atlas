@@ -6,7 +6,6 @@ import ReportPanel from "@/components/ReportPanel";
 import SourcePanel from "@/components/SourcePanel";
 import ChatPanel from "@/components/ChatPanel";
 import {
-  SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
 
@@ -18,12 +17,10 @@ export default function ProjectPage() {
     <div className="h-screen [--header-height:calc(--spacing(12))]" >
       <SidebarProvider className="flex flex-col h-full">
         <Header />
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden relative">
           <SourcePanel />
-          <SidebarInset>
-            <ReportPanel projectId={id} />
-          </SidebarInset>
           <ChatPanel />
+          <ReportPanel projectId={id} />
         </div>
       </SidebarProvider>
     </div>

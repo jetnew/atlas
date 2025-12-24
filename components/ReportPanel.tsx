@@ -3,12 +3,11 @@
 import { useEffect, useRef, useMemo, useState } from "react";
 import { useCompletion } from "@ai-sdk/react";
 import { Button } from "@/components/ui/button";
-import { NotebookText, RefreshCcw } from "lucide-react";
+import { NotebookText, RefreshCcw, PanelLeftIcon, PanelRightIcon } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
 import { parseReportToMap } from "@/lib/formatReport";
 import Map from "@/components/Map";
 import Report from "@/components/Report";
-import { SidebarTrigger } from "@/components/ui/sidebar"
 
 interface ReportPanelProps {
   projectId: string;
@@ -18,6 +17,41 @@ export default function ReportPanel({ projectId }: ReportPanelProps) {
   const { isLoading, error, getProjectData, currentProject } = useProject();
   const reportGeneratedRef = useRef(false);
   const [isMapView, setIsMapView] = useState(true);
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+
+  // Listen to sidebar state changes via data attributes
+  useEffect(() => {
+    const checkSidebarStates = () => {
+      const leftSidebar = document.querySelector('[data-slot="sidebar"][data-side="left"]');
+      const rightSidebar = document.querySelector('[data-slot="sidebar"][data-side="right"]');
+
+      if (leftSidebar) {
+        setLeftSidebarOpen(leftSidebar.getAttribute('data-state') === 'expanded');
+      }
+      if (rightSidebar) {
+        setRightSidebarOpen(rightSidebar.getAttribute('data-state') === 'expanded');
+      }
+    };
+
+    // Initial check
+    checkSidebarStates();
+
+    // Create observer to watch for attribute changes
+    const observer = new MutationObserver(checkSidebarStates);
+
+    const leftSidebar = document.querySelector('[data-slot="sidebar"][data-side="left"]');
+    const rightSidebar = document.querySelector('[data-slot="sidebar"][data-side="right"]');
+
+    if (leftSidebar) {
+      observer.observe(leftSidebar, { attributes: true, attributeFilter: ['data-state'] });
+    }
+    if (rightSidebar) {
+      observer.observe(rightSidebar, { attributes: true, attributeFilter: ['data-state'] });
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   // Hook: Generate markdown text report
   const {
@@ -75,9 +109,52 @@ export default function ReportPanel({ projectId }: ReportPanelProps) {
 
   const isGenerating = isGeneratingReport;
 
+  // Calculate sidebar widths (matching sidebar.tsx constants)
+  const sidebarWidth = "16rem"; // --sidebar-width
+  const sidebarPadding = "0.5rem"; // p-2 = 0.5rem on each side
+
+  const toggleLeftSidebar = () => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'b',
+      metaKey: true,
+      bubbles: true
+    });
+    window.dispatchEvent(event);
+  };
+
+  const toggleRightSidebar = () => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'l',
+      metaKey: true,
+      bubbles: true
+    });
+    window.dispatchEvent(event);
+  };
+
   return (
-    <div className="h-full flex flex-col overflow-hidden relative">
-      <SidebarTrigger className="absolute top-2 left-2 z-10 size-9" />
+    <div
+      className="absolute inset-0 flex flex-col overflow-hidden transition-[left,right] duration-200 ease-linear"
+      style={{
+        left: leftSidebarOpen ? `calc(${sidebarWidth} + ${sidebarPadding})` : '0',
+        right: rightSidebarOpen ? `calc(${sidebarWidth} + ${sidebarPadding})` : '0',
+      }}
+    >
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-2 left-2 z-10 size-9"
+        onClick={toggleLeftSidebar}
+      >
+        <PanelLeftIcon className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-2 right-12 z-10 size-9"
+        onClick={toggleRightSidebar}
+      >
+        <PanelRightIcon className="h-4 w-4" />
+      </Button>
       {isMapView && (
         <>
           <Button
