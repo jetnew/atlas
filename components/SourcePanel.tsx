@@ -110,10 +110,13 @@ function SourceTab({ source, onClick }: SourceTabProps) {
   );
 }
 
-function ToggleButton() {
+function ToggleButton({ onToggle }: { onToggle?: () => void }) {
   const { toggle } = useSidebarToggle();
   return (
-    <Button variant="ghost" size="icon" className="size-9" onClick={toggle}>
+    <Button variant="ghost" size="icon" className="size-9" onClick={() => {
+      toggle();
+      onToggle?.();
+    }}>
       <PanelLeftIcon className="h-4 w-4" />
     </Button>
   );
@@ -178,7 +181,7 @@ export default function SourcePanel() {
         )}
         <div className="flex-1 overflow-auto p-2">
           <div className="flex justify-end">
-            <ToggleButton />
+            <ToggleButton onToggle={() => setIsExpanded(false)} />
           </div>
           {uploadError && (
             <div className="text-xs text-destructive mb-2 p-2 bg-destructive/10 rounded">

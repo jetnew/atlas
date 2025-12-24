@@ -9,10 +9,13 @@ import {
   useSidebarToggle,
 } from "@/components/ui/sidebar";
 
-function ToggleButton() {
+function ToggleButton({ onToggle }: { onToggle?: () => void }) {
   const { toggle } = useSidebarToggle();
   return (
-    <Button variant="ghost" size="icon" className="size-9" onClick={toggle}>
+    <Button variant="ghost" size="icon" className="size-9" onClick={() => {
+      toggle();
+      onToggle?.();
+    }}>
       <PanelRightIcon className="h-4 w-4" />
     </Button>
   );
@@ -32,7 +35,7 @@ export default function ChatPanel() {
       <SidebarContent className="relative">
         <div className="flex-1 overflow-auto p-2">
           <div className="flex justify-between">
-            <ToggleButton />
+            <ToggleButton onToggle={() => setIsExpanded(false)} />
             <Button
               variant="ghost"
               size="icon"

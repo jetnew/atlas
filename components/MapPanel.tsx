@@ -165,7 +165,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="absolute top-2 left-2 z-10 size-9"
+          className="absolute top-2 left-2 z-5 size-9"
           onClick={toggleLeftSidebar}
         >
           <PanelLeftIcon className="h-4 w-4" />
@@ -175,7 +175,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="absolute top-2 right-2 z-10 size-9"
+          className="absolute top-2 right-2 z-5 size-9"
           onClick={toggleRightSidebar}
         >
           <PanelRightIcon className="h-4 w-4" />
