@@ -29,12 +29,14 @@ import {
 import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
+import { NODE_COLORS } from "@/lib/constants";
 
 interface ProjectCardProps {
   project: Project;
+  index: number;
 }
 
-function ProjectCard({ project }: ProjectCardProps) {
+function ProjectCard({ project, index }: ProjectCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { deleteProject } = useProject();
 
@@ -45,6 +47,9 @@ function ProjectCard({ project }: ProjectCardProps) {
     month: 'short',
     day: 'numeric'
   });
+
+  const colorIndex = index % NODE_COLORS.length;
+  const color = NODE_COLORS[colorIndex];
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -59,7 +64,13 @@ function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <>
-      <Card className="cursor-pointer hover:shadow-lg transition-shadow w-64 h-40 flex flex-col relative group">
+      <Card 
+        className="cursor-pointer hover:shadow-lg transition-shadow w-64 h-40 flex flex-col relative group"
+        style={{
+          backgroundColor: color[1],
+          border: `2px solid ${color[0]}`,
+        }}
+      >
         <Link href={`/p/${project.id}`} className="flex flex-col h-full">
           <CardHeader className="pb-2">
             <CardTitle className="line-clamp-3 leading-relaxed pb-1 pr-8 text-sm">{projectTitle}</CardTitle>
@@ -142,10 +153,11 @@ function AppContent() {
             </Button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {projects.map((project) => (
+            {projects.map((project, index) => (
               <ProjectCard
                 key={project.id}
                 project={project}
+                index={index}
               />
             ))}
           </div>
