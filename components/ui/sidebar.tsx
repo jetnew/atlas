@@ -158,6 +158,7 @@ function Sidebar({
   children,
   keyboardShortcut,
   defaultOpen = true,
+  width,
   ...props
 }: React.ComponentProps<"div"> & {
   side?: "left" | "right"
@@ -165,6 +166,7 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none"
   keyboardShortcut?: string
   defaultOpen?: boolean
+  width?: string
 }) {
   const { isMobile } = useSidebar()
   const [open, setOpen] = React.useState(defaultOpen)

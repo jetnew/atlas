@@ -152,11 +152,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
 
   return (
     <div
-      className="absolute inset-0 flex flex-col overflow-hidden transition-[left,right] duration-200 ease-linear"
-      style={{
-        left: leftSidebarOpen ? `calc(${sidebarWidth} + ${sidebarPadding})` : '0',
-        right: rightSidebarOpen ? `calc(${sidebarWidth} + ${sidebarPadding})` : '0',
-      }}
+      className={`absolute inset-0 flex flex-col overflow-hidden transition-[left,right] duration-200 ease-linear`}
     >
       {!leftSidebarOpen && (
         <Button
