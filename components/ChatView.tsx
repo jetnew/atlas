@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useChat } from "@ai-sdk/react";
+import { useState, useRef, useEffect } from "react";
+import { useChat as useAIChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Button } from "@/components/ui/button";
 import { PanelRightIcon, ArrowUpIcon, Plus as IconPlus, FileText, X as XIcon, ArrowLeft } from "lucide-react";
@@ -18,6 +18,7 @@ import {
   InputGroupAddon,
   InputGroupButton,
 } from "@/components/ui/input-group";
+import { useChatContext } from "@/components/ChatContext";
 
 function ToggleButton({ onToggle }: { onToggle?: () => void }) {
   const { toggle } = useSidebarToggle();
@@ -45,12 +46,18 @@ export default function ChatView({ onBack, isDragging }: ChatViewProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { setMessages } = useChatContext();
 
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, status } = useAIChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
     }),
   });
+
+  // Sync messages to context whenever they change
+  useEffect(() => {
+    setMessages(messages);
+  }, [messages, setMessages]);
 
   const validateAndAddFiles = (files: File[]) => {
     setFileError("");

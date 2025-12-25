@@ -175,7 +175,7 @@ export default function SourcePanel() {
   return (
     <Sidebar
       className="top-(--header-height) h-[calc(100svg-var(--header-height))]! pt-0 pr-0"
-      style={{ "--sidebar-width": view === "source" ? "40rem" : "14rem" } as React.CSSProperties}
+      style={{ "--sidebar-width": view === "source" ? "36rem" : "14rem" } as React.CSSProperties}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

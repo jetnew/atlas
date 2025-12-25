@@ -17,7 +17,7 @@ const MapNode = memo(({ data }: { data: MapNodeData }) => {
   return (
     <>
       {!isRoot && <Handle type="target" position={Position.Top} />}
-      <div className={`flex flex-col gap-2 p-3 ${text ? "w-[300px]" : "w-[250px]"}`}>
+      <div className={`flex flex-col gap-2 p-3 w-[300px]`}>
         {text ? (
           <>
             <div className="font-medium text-sm mb-2">

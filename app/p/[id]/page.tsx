@@ -9,6 +9,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { ReportProvider } from "@/components/ReportContext"
+import { ChatProvider } from "@/components/ChatContext"
 
 export default function ProjectPage() {
   const params = useParams();
@@ -18,12 +19,14 @@ export default function ProjectPage() {
     <div className="h-screen [--header-height:calc(--spacing(12))]" >
       <SidebarProvider className="flex flex-col h-full">
         <ReportProvider>
-          <Header />
-          <div className="flex-1 overflow-hidden relative">
-            <SourcePanel />
-            <ChatPanel />
-            <MapPanel projectId={id} />
-          </div>
+          <ChatProvider>
+            <Header />
+            <div className="flex-1 overflow-hidden relative">
+              <SourcePanel />
+              <ChatPanel />
+              <MapPanel projectId={id} />
+            </div>
+          </ChatProvider>
         </ReportProvider>
       </SidebarProvider>
     </div>
