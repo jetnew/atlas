@@ -3,11 +3,12 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadFileToStorage, generateStoragePath, deleteFileFromStorage } from "@/lib/supabase/storage";
-import { Project, Question } from "@/lib/types";
+import { Project, Question, Chat } from "@/lib/types";
 
 interface ProjectContextType {
     currentProject: Project | null;
     projects: Project[];
+    chats: Chat[];
     isLoading: boolean;
     error: string | null;
     createProject: (
@@ -25,6 +26,8 @@ interface ProjectContextType {
     setCurrentProject: (project: Project | null) => void;
     clearCurrentProject: () => void;
     uploadFilesToProject: (projectId: string, files: File[]) => Promise<void>;
+    fetchChats: (projectId: string) => Promise<void>;
+    deleteChat: (chatId: string) => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -32,6 +35,7 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 export function ProjectProvider({ children }: { children: ReactNode }) {
     const [currentProject, setCurrentProject] = useState<Project | null>(null);
     const [projects, setProjects] = useState<Project[]>([]);
+    const [chats, setChats] = useState<Chat[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -452,11 +456,60 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         }
     }, [currentProject, getProjectData]);
 
+    const fetchChats = useCallback(async (projectId: string) => {
+        try {
+            const supabase = createClient();
+
+            const { data: chatsData, error: chatsError } = await supabase
+                .from("chats")
+                .select("id, user_id, project_id, title, messages, created_at")
+                .eq("project_id", projectId)
+                .order("created_at", { ascending: false });
+
+            if (chatsError) {
+                console.error("Error fetching chats:", chatsError);
+                throw new Error(`Failed to fetch chats: ${chatsError.message}`);
+            }
+
+            setChats(chatsData || []);
+        } catch (err) {
+            console.error("Error fetching chats:", err);
+            setChats([]);
+        }
+    }, []);
+
+    const deleteChat = useCallback(async (chatId: string) => {
+        setError(null);
+
+        try {
+            const supabase = createClient();
+
+            const { error: deleteError } = await supabase
+                .from("chats")
+                .delete()
+                .eq("id", chatId);
+
+            if (deleteError) {
+                throw new Error(`Failed to delete chat: ${deleteError.message}`);
+            }
+
+            // Update local state
+            setChats((prev) => prev.filter((c) => c.id !== chatId));
+        } catch (err) {
+            console.error("Error deleting chat:", err);
+            const errorMessage =
+                err instanceof Error ? err.message : "Failed to delete chat.";
+            setError(errorMessage);
+            throw err;
+        }
+    }, []);
+
     return (
         <ProjectContext.Provider
             value={{
                 currentProject,
                 projects,
+                chats,
                 isLoading,
                 error,
                 createProject,
@@ -468,6 +521,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
                 setCurrentProject: handleSetCurrentProject,
                 clearCurrentProject: handleClearCurrentProject,
                 uploadFilesToProject,
+                fetchChats,
+                deleteChat,
             }}
         >
             {children}

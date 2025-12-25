@@ -32,3 +32,12 @@ export interface UploadedFileInfo {
   status: 'uploading' | 'success' | 'error';
   error?: string;
 }
+
+export interface Chat {
+  id: string;
+  user_id: string;
+  project_id: string;
+  title: string;
+  messages: unknown[];
+  created_at: string;
+}

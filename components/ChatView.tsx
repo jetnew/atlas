@@ -41,26 +41,54 @@ interface ChatViewProps {
   isDragging: boolean;
   chatId: string;
   projectId: string;
+  isNewChat?: boolean;
 }
 
-export default function ChatView({ onBack, isDragging, chatId, projectId }: ChatViewProps) {
+export default function ChatView({ onBack, isDragging, chatId, projectId, isNewChat = true }: ChatViewProps) {
   const [userInput, setUserInput] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string>("");
+  const [isLoadingChat, setIsLoadingChat] = useState(!isNewChat);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { setMessages } = useChatContext();
+  const { setMessages: setContextMessages } = useChatContext();
 
-  const { messages, sendMessage, status } = useAIChat({
+  const { messages, sendMessage, status, setMessages } = useAIChat({
+    id: chatId,
     transport: new DefaultChatTransport({
       api: "/api/chat",
       body: { chatId, projectId },
     }),
   });
 
+  // Load existing chat messages when opening an existing chat
+  useEffect(() => {
+    if (!isNewChat && chatId) {
+      const loadChat = async () => {
+        setIsLoadingChat(true);
+        try {
+          const response = await fetch(`/api/chat/${chatId}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.messages && data.messages.length > 0) {
+              setMessages(data.messages);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to load chat:", error);
+        } finally {
+          setIsLoadingChat(false);
+        }
+      };
+      loadChat();
+    } else {
+      setIsLoadingChat(false);
+    }
+  }, [chatId, isNewChat, setMessages]);
+
   // Sync messages to context whenever they change
   useEffect(() => {
-    setMessages(messages);
-  }, [messages, setMessages]);
+    setContextMessages(messages);
+  }, [messages, setContextMessages]);
 
   const validateAndAddFiles = (files: File[]) => {
     setFileError("");
