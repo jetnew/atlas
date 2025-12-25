@@ -116,7 +116,7 @@ export default function ChatPanel() {
   return (
     <Sidebar
       className="top-(--header-height) h-[calc(100svg-var(--header-height))]! pt-0 pl-0"
-      style={{ "--sidebar-width": view === "chat" ? "26rem" : "16rem" } as React.CSSProperties}
+      style={{ "--sidebar-width": view === "chat" ? "26rem" : "14rem" } as React.CSSProperties}
       side="right"
       variant="floating"
       keyboardShortcut="l"

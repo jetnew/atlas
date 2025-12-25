@@ -175,7 +175,7 @@ export default function SourcePanel() {
   return (
     <Sidebar
       className="top-(--header-height) h-[calc(100svg-var(--header-height))]! pt-0 pr-0"
-      style={{ "--sidebar-width": view === "source" ? "40rem" : "16rem" } as React.CSSProperties}
+      style={{ "--sidebar-width": view === "source" ? "40rem" : "14rem" } as React.CSSProperties}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -197,7 +197,7 @@ export default function SourcePanel() {
         )}
         <div className="flex-1 flex flex-col overflow-hidden p-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center flex-1 min-w-0">
+            <div className="flex items-center flex-1 min-w-0 gap-1">
               {view === "source" && (
                 <Button
                   variant="ghost"
@@ -212,9 +212,12 @@ export default function SourcePanel() {
                 </Button>
               )}
               {view === "source" && selectedSource && (
-                <span className="text-sm font-medium truncate flex-1 text-center pr-9">
-                  {selectedSource.name}
-                </span>
+                <div className="flex items-center gap-2 flex-1 min-w-0 pr-9">
+                  <FileText className="h-4 w-4 shrink-0" />
+                  <span className="text-sm font-medium truncate">
+                    {selectedSource.name}
+                  </span>
+                </div>
               )}
             </div>
             <ToggleButton onToggle={() => setView("default")} />
@@ -251,7 +254,7 @@ export default function SourcePanel() {
             )
           )}
           {view === "source" && selectedSource && (
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 mt-1">
               <PdfViewer storagePath={selectedSource.storage_path} />
             </div>
           )}
