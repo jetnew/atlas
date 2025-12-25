@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { Button } from "@/components/ui/button";
 import { PanelRightIcon, ArrowUpIcon, Plus as IconPlus, FileText, X as XIcon, ArrowLeft } from "lucide-react";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
@@ -33,13 +35,6 @@ const MAX_FILES = 10;
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB in bytes
 const ACCEPTED_FILE_TYPES = ".pdf,.docx,.txt,.md,.png,.jpg,.jpeg";
 
-const mockMessages = [
-  { role: "user" as const, content: "Can you explain what React hooks are?" },
-  { role: "assistant" as const, content: "React hooks are functions that let you use state and other React features in functional components. The most common hooks are `useState` for managing state and `useEffect` for side effects." },
-  { role: "user" as const, content: "What's the difference between useState and useReducer?" },
-  { role: "assistant" as const, content: "`useState` is simpler and best for independent state values. `useReducer` is better for complex state logic with multiple sub-values or when the next state depends on the previous one. It follows a Redux-like pattern with actions and a reducer function." },
-];
-
 interface ChatViewProps {
   onBack: () => void;
   isDragging: boolean;
@@ -50,6 +45,12 @@ export default function ChatView({ onBack, isDragging }: ChatViewProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+    }),
+  });
 
   const validateAndAddFiles = (files: File[]) => {
     setFileError("");
@@ -94,7 +95,7 @@ export default function ChatView({ onBack, isDragging }: ChatViewProps) {
 
   const handleSend = () => {
     if (userInput.trim() || selectedFiles.length > 0) {
-      console.log("Sending message:", userInput, "Files:", selectedFiles.map(f => f.name));
+      sendMessage({ text: userInput });
       setUserInput("");
       setSelectedFiles([]);
     }
@@ -124,17 +125,24 @@ export default function ChatView({ onBack, isDragging }: ChatViewProps) {
             </div>
           </div>
           <div className="flex flex-col gap-4 mt-1">
-            {mockMessages.map((msg, index) => (
-              <Message key={index} from={msg.role}>
-                <MessageContent>
-                  {msg.role === "assistant" ? (
-                    <MessageResponse>{msg.content}</MessageResponse>
-                  ) : (
-                    msg.content
-                  )}
-                </MessageContent>
-              </Message>
-            ))}
+            {messages.map((message) => {
+              const textContent = message.parts
+                .filter((part): part is { type: "text"; text: string } => part.type === "text")
+                .map((part) => part.text)
+                .join("");
+
+              return (
+                <Message key={message.id} from={message.role as "user" | "assistant"}>
+                  <MessageContent>
+                    {message.role === "assistant" ? (
+                      <MessageResponse>{textContent}</MessageResponse>
+                    ) : (
+                      textContent
+                    )}
+                  </MessageContent>
+                </Message>
+              );
+            })}
           </div>
         </div>
       </SidebarContent>
@@ -204,7 +212,7 @@ export default function ChatView({ onBack, isDragging }: ChatViewProps) {
               variant="default"
               className="rounded-full shrink-0"
               size="icon-xs"
-              disabled={!userInput.trim() && selectedFiles.length === 0}
+              disabled={status !== "ready" || (!userInput.trim() && selectedFiles.length === 0)}
               onClick={handleSend}
               type="button"
             >
