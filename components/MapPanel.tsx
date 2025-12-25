@@ -38,7 +38,7 @@ function getMessageText(message: { parts: Array<{ type: string; text?: string }>
 }
 
 // Helper to truncate text to first 10 characters
-function truncateText(text: string, maxLength: number = 10): string {
+function truncateText(text: string, maxLength: number = 20): string {
   const trimmed = text.trim();
   if (trimmed.length <= maxLength) return trimmed;
   return trimmed.substring(0, maxLength) + "...";

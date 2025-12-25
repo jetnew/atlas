@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useProject } from "@/components/ProjectContext";
+import { useChatContext } from "@/components/ChatContext";
 import ChatView from "@/components/ChatView";
 
 interface ChatTabProps {
@@ -74,8 +75,10 @@ function ChatTab({ chat, onClick }: ChatTabProps) {
           <DropdownMenuContent align="end">
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
-              onSelect={(e) => {
-                e.preventDefault();
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              onSelect={() => {
                 setIsDeleteDialogOpen(true);
               }}
             >
@@ -125,6 +128,7 @@ interface ChatPanelProps {
 
 export default function ChatPanel({ projectId }: ChatPanelProps) {
   const { chats, fetchChats } = useProject();
+  const { setMessages: setContextMessages } = useChatContext();
   const [view, setView] = useState<ViewState>("default");
   const [isDragging, setIsDragging] = useState(false);
   const [chatId, setChatId] = useState<string | null>(null);
@@ -150,9 +154,11 @@ export default function ChatPanel({ projectId }: ChatPanelProps) {
     setView("default");
     setChatId(null);
     setIsNewChat(false);
+    // Clear messages from context so breadcrumbs reset
+    setContextMessages([]);
     // Refresh chats list when going back
     fetchChats(projectId);
-  }, [fetchChats, projectId]);
+  }, [fetchChats, projectId, setContextMessages]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -184,6 +190,8 @@ export default function ChatPanel({ projectId }: ChatPanelProps) {
           setView("default");
           setChatId(null);
           setIsNewChat(false);
+          // Clear messages from context so breadcrumbs reset
+          setContextMessages([]);
         }
       }}
       onDragOver={view === "chat" ? handleDragOver : undefined}
