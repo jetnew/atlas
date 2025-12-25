@@ -146,7 +146,7 @@ export default function ChatView({ onBack, isDragging }: ChatViewProps) {
           </div>
         </div>
       </SidebarContent>
-      <SidebarFooter className="p-2">
+      <SidebarFooter className="pt-0">
         <input
           ref={fileInputRef}
           type="file"
