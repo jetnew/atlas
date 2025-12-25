@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import { useCompletion } from "@ai-sdk/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -231,7 +231,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
           style={{ left: leftSidebarOpen ? `calc(${leftSidebarWidth}px - 1rem)` : '3.25rem' }}
         >
           <BreadcrumbList>
-            {/* Home - clickable to go back to default map */}
+            {/* Home - always shown first */}
             <BreadcrumbItem>
               {selectedAssistantIndex === null ? (
                 <BreadcrumbPage>Home</BreadcrumbPage>
@@ -248,32 +248,158 @@ export default function MapPanel({ projectId }: MapPanelProps) {
               )}
             </BreadcrumbItem>
 
-            {/* Dynamic breadcrumbs based on assistant messages */}
-            {selectedAssistantIndex !== null && (() => {
-              // Messages before the selected one (shown in dropdown)
-              const messagesBefore = assistantMessages.slice(0, selectedAssistantIndex);
-              // Messages after the selected one (shown in dropdown when navigated back)
-              const messagesAfter = assistantMessages.slice(selectedAssistantIndex + 1);
-              // The currently selected message
-              const currentMessage = assistantMessages[selectedAssistantIndex];
+            {/* Dynamic breadcrumbs: always show Home, current selected, and latest */}
+            {(() => {
+              const lastIndex = assistantMessages.length - 1;
+              const lastMessage = assistantMessages[lastIndex];
 
-              if (!currentMessage) return null;
+              // Helper to render a breadcrumb item (link or page)
+              const renderBreadcrumbItem = (msg: typeof lastMessage, idx: number, isCurrent: boolean) => (
+                <BreadcrumbItem key={msg.id}>
+                  {isCurrent ? (
+                    <BreadcrumbPage>{truncateText(getMessageText(msg))}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setSelectedAssistantIndex(idx);
+                      }}
+                    >
+                      {truncateText(getMessageText(msg))}
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              );
 
-              return (
-                <>
-                  {/* Separator after Home */}
-                  <BreadcrumbSeparator />
-
-                  {/* Ellipsis dropdown for messages BEFORE the selected one */}
-                  {messagesBefore.length > 0 && (
+              // Case: Home is selected (null)
+              if (selectedAssistantIndex === null) {
+                // Show all messages as links (no ellipsis needed since we show all)
+                // But if more than 2 messages, show: first > ... > last
+                if (assistantMessages.length <= 2) {
+                  return assistantMessages.map((msg, idx) => (
+                    <React.Fragment key={msg.id}>
+                      <BreadcrumbSeparator />
+                      {renderBreadcrumbItem(msg, idx, false)}
+                    </React.Fragment>
+                  ));
+                } else {
+                  // More than 2: show first > ... > last
+                  const firstMessage = assistantMessages[0];
+                  const middleMessages = assistantMessages.slice(1, lastIndex);
+                  return (
                     <>
+                      <BreadcrumbSeparator />
+                      {renderBreadcrumbItem(firstMessage, 0, false)}
+                      <BreadcrumbSeparator />
                       <BreadcrumbItem>
                         <DropdownMenu>
                           <DropdownMenuTrigger className="flex items-center gap-1">
                             <BreadcrumbEllipsis className="h-4 w-4" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
-                            {messagesBefore.map((msg, idx) => (
+                            {middleMessages.map((msg, idx) => (
+                              <DropdownMenuItem
+                                key={msg.id}
+                                onClick={() => setSelectedAssistantIndex(idx + 1)}
+                              >
+                                {truncateText(getMessageText(msg))}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </BreadcrumbItem>
+                      <BreadcrumbSeparator />
+                      {renderBreadcrumbItem(lastMessage, lastIndex, false)}
+                    </>
+                  );
+                }
+              }
+
+              // Case: An assistant message is selected
+              const currentMessage = assistantMessages[selectedAssistantIndex];
+              if (!currentMessage) return null;
+
+              const isCurrentLast = selectedAssistantIndex === lastIndex;
+
+              // Determine which messages go in the ellipsis
+              // We always show: current selected + last (if different)
+              // Everything else goes in ellipsis (if any)
+
+              if (assistantMessages.length === 1) {
+                // Only one message - just show it
+                return (
+                  <>
+                    <BreadcrumbSeparator />
+                    {renderBreadcrumbItem(currentMessage, selectedAssistantIndex, true)}
+                  </>
+                );
+              }
+
+              if (assistantMessages.length === 2) {
+                // Two messages - show both, no ellipsis
+                return (
+                  <>
+                    <BreadcrumbSeparator />
+                    {renderBreadcrumbItem(assistantMessages[0], 0, selectedAssistantIndex === 0)}
+                    <BreadcrumbSeparator />
+                    {renderBreadcrumbItem(assistantMessages[1], 1, selectedAssistantIndex === 1)}
+                  </>
+                );
+              }
+
+              // 3+ messages: show current, last, and ellipsis for the rest
+              // Collect messages that should go in the ellipsis (all except current and last)
+              const ellipsisMessages: { msg: typeof currentMessage; idx: number }[] = [];
+              assistantMessages.forEach((msg, idx) => {
+                if (idx !== selectedAssistantIndex && idx !== lastIndex) {
+                  ellipsisMessages.push({ msg, idx });
+                }
+              });
+
+              if (isCurrentLast) {
+                // Current is the last one: show ellipsis > current
+                return (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex items-center gap-1">
+                          <BreadcrumbEllipsis className="h-4 w-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          {ellipsisMessages.map(({ msg, idx }) => (
+                            <DropdownMenuItem
+                              key={msg.id}
+                              onClick={() => setSelectedAssistantIndex(idx)}
+                            >
+                              {truncateText(getMessageText(msg))}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    {renderBreadcrumbItem(currentMessage, selectedAssistantIndex, true)}
+                  </>
+                );
+              }
+
+              // Current is not the last: show current > ellipsis (if any) > last
+              return (
+                <>
+                  <BreadcrumbSeparator />
+                  {renderBreadcrumbItem(currentMessage, selectedAssistantIndex, true)}
+                  {ellipsisMessages.length > 0 && (
+                    <>
+                      <BreadcrumbSeparator />
+                      <BreadcrumbItem>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="flex items-center gap-1">
+                            <BreadcrumbEllipsis className="h-4 w-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            {ellipsisMessages.map(({ msg, idx }) => (
                               <DropdownMenuItem
                                 key={msg.id}
                                 onClick={() => setSelectedAssistantIndex(idx)}
@@ -284,40 +410,10 @@ export default function MapPanel({ projectId }: MapPanelProps) {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </BreadcrumbItem>
-                      <BreadcrumbSeparator />
                     </>
                   )}
-
-                  {/* Current (selected) message */}
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>
-                      {truncateText(getMessageText(currentMessage))}
-                    </BreadcrumbPage>
-                  </BreadcrumbItem>
-
-                  {/* Ellipsis dropdown for messages AFTER the selected one */}
-                  {messagesAfter.length > 0 && (
-                    <>
-                      <BreadcrumbSeparator />
-                      <BreadcrumbItem>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger className="flex items-center gap-1">
-                            <BreadcrumbEllipsis className="h-4 w-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start">
-                            {messagesAfter.map((msg, idx) => (
-                              <DropdownMenuItem
-                                key={msg.id}
-                                onClick={() => setSelectedAssistantIndex(selectedAssistantIndex + 1 + idx)}
-                              >
-                                {truncateText(getMessageText(msg))}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </BreadcrumbItem>
-                    </>
-                  )}
+                  <BreadcrumbSeparator />
+                  {renderBreadcrumbItem(lastMessage, lastIndex, false)}
                 </>
               );
             })()}
