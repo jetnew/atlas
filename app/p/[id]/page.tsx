@@ -23,7 +23,7 @@ export default function ProjectPage() {
             <Header />
             <div className="flex-1 overflow-hidden relative">
               <SourcePanel />
-              <ChatPanel />
+              <ChatPanel projectId={id} />
               <MapPanel projectId={id} />
             </div>
           </ChatProvider>

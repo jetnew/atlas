@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
 import { PanelRightIcon, Plus } from "lucide-react";
 import {
@@ -24,9 +25,19 @@ function ToggleButton({ onToggle }: { onToggle?: () => void }) {
 
 type ViewState = "default" | "chat";
 
-export default function ChatPanel() {
+interface ChatPanelProps {
+  projectId: string;
+}
+
+export default function ChatPanel({ projectId }: ChatPanelProps) {
   const [view, setView] = useState<ViewState>("default");
   const [isDragging, setIsDragging] = useState(false);
+  const [chatId, setChatId] = useState<string>(() => uuidv4());
+
+  const handleNewChat = useCallback(() => {
+    setChatId(uuidv4());
+    setView("chat");
+  }, []);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -61,7 +72,7 @@ export default function ChatPanel() {
       onDrop={view === "chat" ? handleDrop : undefined}
     >
       {view === "chat" ? (
-        <ChatView onBack={() => setView("default")} isDragging={isDragging} />
+        <ChatView onBack={() => setView("default")} isDragging={isDragging} chatId={chatId} projectId={projectId} />
       ) : (
         <SidebarContent className="relative">
           <div className="flex-1 overflow-auto p-2">
@@ -73,7 +84,7 @@ export default function ChatPanel() {
                 variant="ghost"
                 size="icon"
                 className="size-9"
-                onClick={() => setView("chat")}
+                onClick={handleNewChat}
               >
                 <Plus className="h-4 w-4" />
               </Button>

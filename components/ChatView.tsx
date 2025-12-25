@@ -39,9 +39,11 @@ const ACCEPTED_FILE_TYPES = ".pdf,.docx,.txt,.md,.png,.jpg,.jpeg";
 interface ChatViewProps {
   onBack: () => void;
   isDragging: boolean;
+  chatId: string;
+  projectId: string;
 }
 
-export default function ChatView({ onBack, isDragging }: ChatViewProps) {
+export default function ChatView({ onBack, isDragging, chatId, projectId }: ChatViewProps) {
   const [userInput, setUserInput] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string>("");
@@ -51,6 +53,7 @@ export default function ChatView({ onBack, isDragging }: ChatViewProps) {
   const { messages, sendMessage, status } = useAIChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
+      body: { chatId, projectId },
     }),
   });
 
