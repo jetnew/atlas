@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { PanelRightIcon, ArrowUpIcon, Plus as IconPlus, FileText, X as XIcon, ArrowLeft } from "lucide-react";
+import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import { Badge } from "@/components/ui/badge";
 import {
   SidebarContent,
@@ -32,13 +33,20 @@ const MAX_FILES = 10;
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB in bytes
 const ACCEPTED_FILE_TYPES = ".pdf,.docx,.txt,.md,.png,.jpg,.jpeg";
 
+const mockMessages = [
+  { role: "user" as const, content: "Can you explain what React hooks are?" },
+  { role: "assistant" as const, content: "React hooks are functions that let you use state and other React features in functional components. The most common hooks are `useState` for managing state and `useEffect` for side effects." },
+  { role: "user" as const, content: "What's the difference between useState and useReducer?" },
+  { role: "assistant" as const, content: "`useState` is simpler and best for independent state values. `useReducer` is better for complex state logic with multiple sub-values or when the next state depends on the previous one. It follows a Redux-like pattern with actions and a reducer function." },
+];
+
 interface ChatViewProps {
   onBack: () => void;
   isDragging: boolean;
 }
 
 export default function ChatView({ onBack, isDragging }: ChatViewProps) {
-  const [message, setMessage] = useState("");
+  const [userInput, setUserInput] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -85,9 +93,9 @@ export default function ChatView({ onBack, isDragging }: ChatViewProps) {
   };
 
   const handleSend = () => {
-    if (message.trim() || selectedFiles.length > 0) {
-      console.log("Sending message:", message, "Files:", selectedFiles.map(f => f.name));
-      setMessage("");
+    if (userInput.trim() || selectedFiles.length > 0) {
+      console.log("Sending message:", userInput, "Files:", selectedFiles.map(f => f.name));
+      setUserInput("");
       setSelectedFiles([]);
     }
   };
@@ -115,7 +123,19 @@ export default function ChatView({ onBack, isDragging }: ChatViewProps) {
               </Button>
             </div>
           </div>
-          {/* Chat content will go here */}
+          <div className="flex flex-col gap-4 mt-1">
+            {mockMessages.map((msg, index) => (
+              <Message key={index} from={msg.role}>
+                <MessageContent>
+                  {msg.role === "assistant" ? (
+                    <MessageResponse>{msg.content}</MessageResponse>
+                  ) : (
+                    msg.content
+                  )}
+                </MessageContent>
+              </Message>
+            ))}
+          </div>
         </div>
       </SidebarContent>
       <SidebarFooter className="p-2">
@@ -130,8 +150,8 @@ export default function ChatView({ onBack, isDragging }: ChatViewProps) {
         />
         <InputGroup className="bg-white">
           <InputGroupTextarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
             placeholder="Ask anything..."
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -184,7 +204,7 @@ export default function ChatView({ onBack, isDragging }: ChatViewProps) {
               variant="default"
               className="rounded-full shrink-0"
               size="icon-xs"
-              disabled={!message.trim() && selectedFiles.length === 0}
+              disabled={!userInput.trim() && selectedFiles.length === 0}
               onClick={handleSend}
               type="button"
             >
