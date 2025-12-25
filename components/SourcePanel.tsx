@@ -195,8 +195,8 @@ export default function SourcePanel() {
             <div className="text-sm text-muted-foreground">Drop to add to project</div>
           </div>
         )}
-        <div className="flex-1 flex flex-col overflow-hidden p-2">
-          <div className="flex items-center justify-between">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between p-2 pb-0">
             <div className="flex items-center flex-1 min-w-0 gap-1">
               {view === "source" && (
                 <Button
@@ -223,41 +223,43 @@ export default function SourcePanel() {
             <ToggleButton onToggle={() => setView("default")} />
           </div>
           {uploadError && (
-            <div className="text-xs text-destructive mb-2 p-2 bg-destructive/10 rounded">
+            <div className="text-xs text-destructive mx-2 mt-1 p-2 bg-destructive/10 rounded">
               {uploadError}
             </div>
           )}
-          {view === "default" && (
-            isLoading ? (
-              null
-            ) : currentProject?.sources && currentProject.sources.length > 0 ? (
-              <div className="space-y-0.5">
-                {currentProject.sources.map((source) => (
-                  <SourceTab
-                    key={source.id}
-                    source={source}
-                    onClick={() => {
-                      if (source.storage_path) {
-                        setSelectedSource({
-                          id: source.id,
-                          name: source.name,
-                          storage_path: source.storage_path,
-                        });
-                        setView("source");
-                      }
-                    }}
-                  />
-                ))}
+          <div className="flex-1 overflow-auto p-2 pt-1">
+            {view === "default" && (
+              isLoading ? (
+                null
+              ) : currentProject?.sources && currentProject.sources.length > 0 ? (
+                <div className="space-y-0.5">
+                  {currentProject.sources.map((source) => (
+                    <SourceTab
+                      key={source.id}
+                      source={source}
+                      onClick={() => {
+                        if (source.storage_path) {
+                          setSelectedSource({
+                            id: source.id,
+                            name: source.name,
+                            storage_path: source.storage_path,
+                          });
+                          setView("source");
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                null
+              )
+            )}
+            {view === "source" && selectedSource && (
+              <div className="h-full">
+                <PdfViewer storagePath={selectedSource.storage_path} />
               </div>
-            ) : (
-              null
-            )
-          )}
-          {view === "source" && selectedSource && (
-            <div className="flex-1 min-h-0 mt-1">
-              <PdfViewer storagePath={selectedSource.storage_path} />
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </SidebarContent>
     </Sidebar>

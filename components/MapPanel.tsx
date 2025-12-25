@@ -57,13 +57,15 @@ export default function MapPanel({ projectId }: MapPanelProps) {
   useEffect(() => {
     const checkSidebarStates = () => {
       const leftSidebar = document.querySelector('[data-slot="sidebar"][data-side="left"]');
+      const leftSidebarContainer = document.querySelector('[data-slot="sidebar"][data-side="left"] [data-slot="sidebar-container"]');
       const rightSidebar = document.querySelector('[data-slot="sidebar"][data-side="right"]');
 
       if (leftSidebar) {
         const isExpanded = leftSidebar.getAttribute('data-state') === 'expanded';
         setLeftSidebarOpen(isExpanded);
-        if (isExpanded) {
-          const sidebarWidth = getComputedStyle(leftSidebar).getPropertyValue('--sidebar-width');
+        if (isExpanded && leftSidebarContainer) {
+          // Read --sidebar-width from the container element where inline styles are applied
+          const sidebarWidth = getComputedStyle(leftSidebarContainer).getPropertyValue('--sidebar-width');
           setLeftSidebarWidth(sidebarWidth ? parseFloat(sidebarWidth) * 16 : 0);
         } else {
           setLeftSidebarWidth(0);
@@ -80,10 +82,15 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     // Function to set up observers on sidebar elements
     const setupObservers = () => {
       const leftSidebar = document.querySelector('[data-slot="sidebar"][data-side="left"]');
+      const leftSidebarContainer = document.querySelector('[data-slot="sidebar"][data-side="left"] [data-slot="sidebar-container"]');
       const rightSidebar = document.querySelector('[data-slot="sidebar"][data-side="right"]');
 
       if (leftSidebar) {
-        attributeObserver.observe(leftSidebar, { attributes: true, attributeFilter: ['data-state', 'style'] });
+        attributeObserver.observe(leftSidebar, { attributes: true, attributeFilter: ['data-state'] });
+      }
+      // Observe the container for style changes (where --sidebar-width is set)
+      if (leftSidebarContainer) {
+        attributeObserver.observe(leftSidebarContainer, { attributes: true, attributeFilter: ['style'] });
       }
       if (rightSidebar) {
         attributeObserver.observe(rightSidebar, { attributes: true, attributeFilter: ['data-state'] });
@@ -92,7 +99,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
       // Check initial states
       checkSidebarStates();
 
-      return leftSidebar && rightSidebar;
+      return leftSidebar && leftSidebarContainer && rightSidebar;
     };
 
     // Try to set up observers immediately
@@ -227,8 +234,8 @@ export default function MapPanel({ projectId }: MapPanelProps) {
       {/* Only show breadcrumbs when there are 1+ assistant messages */}
       {assistantMessages.length >= 1 && (
         <Breadcrumb
-          className="absolute top-4 z-10 transition-[left] duration-200 ease-linear"
-          style={{ left: leftSidebarOpen ? `calc(${leftSidebarWidth}px - 1rem)` : '3.25rem' }}
+          className="absolute top-4 z-5 transition-[left] duration-200 ease-linear"
+          style={{ left: leftSidebarOpen ? `calc(${leftSidebarWidth}px + 1rem)` : '3.25rem' }}
         >
           <BreadcrumbList>
             {/* Home - always shown first */}

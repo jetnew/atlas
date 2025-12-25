@@ -193,23 +193,23 @@ export default function ChatPanel({ projectId }: ChatPanelProps) {
       {view === "chat" && chatId ? (
         <ChatView onBack={handleBack} isDragging={isDragging} chatId={chatId} projectId={projectId} isNewChat={isNewChat} />
       ) : (
-        <SidebarContent className="relative">
-          <div className="flex-1 overflow-auto p-2">
-            <div className="flex justify-between">
-              <div className="flex">
-                <ToggleButton onToggle={() => setView("default")} />
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-9"
-                onClick={handleNewChat}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+        <SidebarContent className="relative flex flex-col">
+          <div className="flex justify-between pt-2 px-2">
+            <div className="flex">
+              <ToggleButton onToggle={() => setView("default")} />
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9"
+              onClick={handleNewChat}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-auto px-2">
             {chats.length > 0 && (
-              <div className="space-y-0.5 mt-2">
+              <div className="space-y-0.5">
                 {chats.map((chat) => (
                   <ChatTab
                     key={chat.id}

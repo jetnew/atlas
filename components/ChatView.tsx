@@ -147,22 +147,22 @@ export default function ChatView({ onBack, isDragging, chatId, projectId, isNewC
           <div className="text-sm text-muted-foreground">Drop to attach files</div>
         </div>
       )}
-      <SidebarContent className="relative">
-        <div className="flex-1 overflow-auto p-2">
-          <div className="flex justify-between">
-            <div className="flex">
-              <ToggleButton onToggle={onBack} />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-9"
-                onClick={onBack}
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </div>
+      <SidebarContent className="relative flex flex-col">
+        <div className="flex justify-between px-2 pt-2">
+          <div className="flex">
+            <ToggleButton onToggle={onBack} />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9"
+              onClick={onBack}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
           </div>
-          <div className="flex flex-col gap-4 mt-1 px-3">
+        </div>
+        <div className="flex-1 overflow-auto px-2">
+          <div className="flex flex-col gap-4 px-3">
             {messages.map((message) => {
               const textContent = message.parts
                 .filter((part): part is { type: "text"; text: string } => part.type === "text")
