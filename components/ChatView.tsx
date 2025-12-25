@@ -124,7 +124,7 @@ export default function ChatView({ onBack, isDragging }: ChatViewProps) {
               </Button>
             </div>
           </div>
-          <div className="flex flex-col gap-4 mt-1">
+          <div className="flex flex-col gap-4 mt-1 px-3">
             {messages.map((message) => {
               const textContent = message.parts
                 .filter((part): part is { type: "text"; text: string } => part.type === "text")
