@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { createClient } from '@/lib/supabase/server';
+import { parseReportToMap } from '@/lib/formatMap';
 
 async function generateReport(
   prompt: string,
@@ -33,22 +34,22 @@ ${qaContext}`;
   });
 }
 
-async function saveReportToDatabase(
+async function saveMapToDatabase(
   projectId: string,
-  reportText: string,
+  map: unknown,
   supabase: Awaited<ReturnType<typeof createClient>>
 ) {
   const { error } = await supabase
     .from('projects')
-    .update({ report: reportText })
+    .update({ map })
     .eq('id', projectId);
 
   if (error) {
-    console.error("Error saving report to Supabase:", error);
+    console.error("Error saving map to Supabase:", error);
     throw error;
   }
 
-  console.log("Report saved to Supabase successfully");
+  console.log("Map saved to Supabase successfully");
 }
 
 export async function POST(request: NextRequest) {
@@ -107,13 +108,14 @@ export async function POST(request: NextRequest) {
     console.log("Starting report generation");
     const result = await generateReport(project.prompt, summaries, questions, answers);
 
-    // Fire-and-forget: save to database after stream is consumed
+    // Fire-and-forget: parse report to map and save to database after stream is consumed
     (async () => {
       try {
         const fullText = await result.text;
-        await saveReportToDatabase(projectId, fullText, supabase);
+        const map = parseReportToMap(fullText);
+        await saveMapToDatabase(projectId, map, supabase);
       } catch (error) {
-        console.error('Failed to save report to database:', error);
+        console.error('Failed to save map to database:', error);
       }
     })();
 

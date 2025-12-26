@@ -2,16 +2,16 @@
 
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 
-interface ReportContextType {
+interface MapContextType {
   isGenerating: boolean;
   setIsGenerating: (value: boolean) => void;
   regenerate: (() => void) | null;
   setRegenerate: (fn: (() => void) | null) => void;
 }
 
-const ReportContext = createContext<ReportContextType | undefined>(undefined);
+const MapContext = createContext<MapContextType | undefined>(undefined);
 
-export function ReportProvider({ children }: { children: ReactNode }) {
+export function MapProvider({ children }: { children: ReactNode }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [regenerate, setRegenerateInternal] = useState<(() => void) | null>(null);
 
@@ -20,7 +20,7 @@ export function ReportProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ReportContext.Provider
+    <MapContext.Provider
       value={{
         isGenerating,
         setIsGenerating,
@@ -29,14 +29,14 @@ export function ReportProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-    </ReportContext.Provider>
+    </MapContext.Provider>
   );
 }
 
-export function useReport() {
-  const context = useContext(ReportContext);
+export function useMap() {
+  const context = useContext(MapContext);
   if (context === undefined) {
-    throw new Error("useReport must be used within a ReportProvider");
+    throw new Error("useMap must be used within a MapProvider");
   }
   return context;
 }

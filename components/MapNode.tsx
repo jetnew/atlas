@@ -18,9 +18,8 @@ const MapNode = memo(({ data, selected }: NodeProps & { data: MapNodeData }) => 
     <>
       {!isRoot && <Handle type="target" position={Position.Top} />}
       <div
-        className={`p-3 w-[300px] rounded-lg transition-shadow ${
-          selected ? "ring-[3px] ring-ring/50 border-ring" : ""
-        }`}
+        className={`p-3 w-[300px] rounded-lg transition-shadow ${selected ? "ring-[3px] ring-ring/50 border-ring" : ""
+          }`}
       >
         {text ? (
           <>

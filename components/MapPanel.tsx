@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PanelLeftIcon, PanelRightIcon, Plus as IconPlus, FileText, X as XIcon, ArrowUpIcon, BoxIcon } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
-import { useReport } from "@/components/ReportContext";
-import { parseReportToMap } from "@/lib/formatReport";
+import { useMap } from "@/components/MapContext";
+import { parseReportToMap } from "@/lib/formatMap";
 import Map, { SelectedNode } from "@/components/Map";
 import {
   InputGroup,
@@ -26,8 +26,9 @@ const ACCEPTED_FILE_TYPES = ".pdf,.docx,.txt,.md,.png,.jpg,.jpeg";
 
 export default function MapPanel({ projectId }: MapPanelProps) {
   const { isLoading, error, getProjectData, currentProject } = useProject();
-  const { setIsGenerating, setRegenerate } = useReport();
+  const { setIsGenerating, setRegenerate } = useMap();
   const reportGeneratedRef = useRef(false);
+  const generateReportRef = useRef<(prompt: string) => void>(() => { });
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [userInput, setUserInput] = useState("");
@@ -90,7 +91,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     return () => attributeObserver.disconnect();
   }, []);
 
-  // Hook: Generate markdown text report
+  // Hook: Generate report and save map to database
   const {
     completion: reportText,
     complete: generateReport,
@@ -98,7 +99,16 @@ export default function MapPanel({ projectId }: MapPanelProps) {
   } = useCompletion({
     api: '/api/report',
     body: { projectId },
+    onFinish: () => {
+      // Refresh project data to get the saved map from database
+      getProjectData(projectId);
+    },
   });
+
+  // Keep ref in sync with latest generateReport
+  useEffect(() => {
+    generateReportRef.current = generateReport;
+  }, [generateReport]);
 
   // Load project data on mount
   useEffect(() => {
@@ -107,38 +117,27 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     }
   }, [projectId, getProjectData]);
 
-  // Generate report if none exists
+  // Generate report if no map exists
   useEffect(() => {
-    if (currentProject && !currentProject.report && !reportGeneratedRef.current) {
+    if (currentProject && !currentProject.map && !reportGeneratedRef.current) {
       reportGeneratedRef.current = true;
       generateReport('');
     }
   }, [currentProject, generateReport]);
 
-  // Determine which report text to display (for Home/default map)
-  const defaultReportText = useMemo(() => {
-    // Priority: streaming > database
-    if (reportText) {
-      return reportText;
-    }
-    if (currentProject?.report) {
-      return currentProject.report;
-    }
-    return '';
-  }, [reportText, currentProject?.report]);
-
-  // Convert report text to structured map data
+  // Parse streaming report text into map, fallback to database map
   const map = useMemo(() => {
-    if (defaultReportText) {
-      return parseReportToMap(defaultReportText);
+    // Priority: streaming text > database
+    if (reportText) {
+      return parseReportToMap(reportText);
     }
-    return null;
-  }, [defaultReportText]);
+    return currentProject?.map || null;
+  }, [reportText, currentProject?.map]);
 
   const handleRegenerate = useCallback(() => {
     reportGeneratedRef.current = false;
-    generateReport('');
-  }, [generateReport]);
+    generateReportRef.current('');
+  }, []);
 
   const validateAndAddFiles = (files: File[]) => {
     setFileError("");

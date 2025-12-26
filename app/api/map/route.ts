@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { streamObject } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { createClient } from '@/lib/supabase/server';
-import { mapSchema } from '@/lib/schemas/report';
+import { mapSchema } from '@/lib/schemas/map';
 
 async function generateMap(reportText: string) {
-  const systemPrompt = `You are a mind map generator, tasked to convert a markdown report into a hierarchical structure for mind map visualization. Given the markdown report, extract only the project title, section headings, sub-section sub-headings, sub-sub-section sub-sub-headings, etc. into the specified structured schema. You should discard the text in each section and only extract the headings. You must extract exactly literally in full faithfully to the original markdown report. Remove any heading markdown formatting, e.g. "#", "##", "###", "####", "1.", "1.1.", "1.1.1.", "1)", "2)", "3)", etc.
-  
+  const systemPrompt = `You are a mind map generator, tasked to convert a markdown report into a hierarchical structure for mind map visualization. Given the markdown report, extract the headings into a recursive tree structure where each node has a title, text, and sections (child nodes). The root node's title should be the main title (# heading), and its sections should contain the child nodes for each ## heading, which in turn have their own sections for ### headings, and so on recursively. You should discard the text content and only extract the headings. You must extract exactly literally in full faithfully to the original markdown report. Remove any heading markdown formatting, e.g. "#", "##", "###", "####", "1.", "1.1.", "1.1.1.", "1)", "2)", "3)", etc.
+
 Report:
 ${reportText}`;
 

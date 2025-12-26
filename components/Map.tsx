@@ -12,12 +12,12 @@ import {
   OnSelectionChangeFunc,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Map as MapType } from "@/lib/schemas/report";
+import { Map as MapType } from "@/lib/schemas/map";
 import { NODE_COLORS } from "@/lib/constants";
-import MapNode from "./MapNode";
+import MapNodeComponent from "./MapNode";
 
 const nodeTypes = {
-  map: MapNode,
+  map: MapNodeComponent,
 };
 
 interface FlatNode {
@@ -31,7 +31,7 @@ interface FlatNode {
 }
 
 const NODE_WIDTH = 300;
-const NODE_HEIGHT = 100;
+const NODE_HEIGHT = 120;
 const HORIZONTAL_SPACING = 20;
 const VERTICAL_SPACING = 120;
 
@@ -47,103 +47,64 @@ interface MapProps {
 
 export default function Map({ report, onSelectionChange }: MapProps) {
   const { initialNodes, initialEdges } = useMemo(() => {
-    if (!report || !report.report || !report.report.sections) {
+    if (!report) {
       return { initialNodes: [], initialEdges: [] };
     }
 
     const flatNodes: FlatNode[] = [];
     const edges: Edge[] = [];
-    let nodeId = 0;
 
-    // Root node - Title
-    const rootId = `node-${nodeId++}`;
-    flatNodes.push({
-      id: rootId,
-      parentId: null,
-      label: report.report.title || "Untitled Report",
-      text: report.report.text,
-      hasChildren: report.report.sections.length > 0,
-      isRoot: true,
-      colorIndex: 0,
-    });
-
-    // Section nodes (children of root)
-    report.report.sections.forEach((section, sectionIndex) => {
-      if (!section.section) return;
-
-      const sectionId = `node-${nodeId++}`;
-      const hasSubsections = section.section.content && section.section.content.length > 0;
-      const colorIndex = (sectionIndex + 1) % NODE_COLORS.length;
+    // Recursive function to process a MapNode and its children
+    // Uses path-based IDs for stability during streaming
+    const processNode = (
+      node: MapType,
+      parentId: string | null,
+      isRoot: boolean,
+      colorIndex: number,
+      depth: number,
+      path: string
+    ): string => {
+      const currentId = path;
+      const hasChildren = node.sections && node.sections.length > 0;
 
       flatNodes.push({
-        id: sectionId,
-        parentId: rootId,
-        label: section.section.heading || `Section ${sectionIndex + 1}`,
-        text: section.section.text,
-        hasChildren: hasSubsections,
-        isRoot: false,
+        id: currentId,
+        parentId,
+        label: node.title || (isRoot ? "Untitled" : "Section"),
+        text: node.text,
+        hasChildren,
+        isRoot,
         colorIndex,
       });
 
-      edges.push({
-        id: `edge-${rootId}-${sectionId}`,
-        source: rootId,
-        target: sectionId,
-        type: "smoothstep",
-        markerEnd: { type: MarkerType.ArrowClosed },
-      });
-
-      // Subsection nodes (children of sections)
-      if (!section.section.content) return;
-      section.section.content.forEach((subsection, subsectionIndex) => {
-        if (!subsection.subsection) return;
-
-        const subsectionId = `node-${nodeId++}`;
-        const hasSubsubsections = subsection.subsection.subsubsection && subsection.subsection.subsubsection.length > 0;
-
-        flatNodes.push({
-          id: subsectionId,
-          parentId: sectionId,
-          label: subsection.subsection.subheading || `Subsection ${subsectionIndex + 1}`,
-          text: subsection.subsection.text,
-          hasChildren: hasSubsubsections,
-          isRoot: false,
-          colorIndex,
-        });
-
+      if (parentId) {
         edges.push({
-          id: `edge-${sectionId}-${subsectionId}`,
-          source: sectionId,
-          target: subsectionId,
+          id: `edge-${parentId}-${currentId}`,
+          source: parentId,
+          target: currentId,
           type: "smoothstep",
           markerEnd: { type: MarkerType.ArrowClosed },
         });
+      }
 
-        // Subsubsection nodes (grandchildren)
-        if (!subsection.subsection.subsubsection) return;
-        subsection.subsection.subsubsection.forEach((subsubsection, subsubIndex) => {
-          const subsubId = `node-${nodeId++}`;
-
-          flatNodes.push({
-            id: subsubId,
-            parentId: subsectionId,
-            label: subsubsection.subsubheading || `Subsubsection ${subsubIndex + 1}`,
-            text: subsubsection.text,
-            hasChildren: false,
-            isRoot: false,
-            colorIndex,
-          });
-
-          edges.push({
-            id: `edge-${subsectionId}-${subsubId}`,
-            source: subsectionId,
-            target: subsubId,
-            type: "smoothstep",
-            markerEnd: { type: MarkerType.ArrowClosed },
-          });
+      // Process children
+      if (node.sections) {
+        node.sections.forEach((child, index) => {
+          // For root's direct children, assign different colors
+          // For deeper nodes, inherit parent's color
+          const childColorIndex = isRoot
+            ? (index + 1) % NODE_COLORS.length
+            : colorIndex;
+          const childPath = `${path}-${index}`;
+          processNode(child, currentId, false, childColorIndex, depth + 1, childPath);
         });
-      });
-    });
+      }
+
+      return currentId;
+    };
+
+    // Process the root node with path-based ID
+    processNode(report, null, true, 0, 0, "root");
 
     // Build hierarchy using d3-hierarchy stratify
     const root = stratify<FlatNode>()
@@ -183,9 +144,79 @@ export default function Map({ report, onSelectionChange }: MapProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
+  // Merge new nodes with existing ones to prevent flickering during streaming
+  // Only update nodes that have changed, preserving existing nodes
   useEffect(() => {
-    setNodes(initialNodes);
-    setEdges(initialEdges);
+    setNodes((currentNodes) => {
+      if (currentNodes.length === 0) {
+        return initialNodes;
+      }
+
+      // Create a map of current nodes by ID for quick lookup
+      const currentNodeMap = Object.fromEntries(currentNodes.map((node) => [node.id, node]));
+
+      // Build the new nodes array
+      const newNodes: Node[] = [];
+
+      // Add/update nodes from initialNodes
+      for (const initialNode of initialNodes) {
+        const existingNode = currentNodeMap[initialNode.id];
+        if (existingNode) {
+          // Node exists - check if data has changed
+          const dataChanged =
+            existingNode.data.label !== initialNode.data.label ||
+            existingNode.data.text !== initialNode.data.text ||
+            existingNode.data.hasChildren !== initialNode.data.hasChildren;
+
+          if (dataChanged) {
+            // Update data but preserve position if node was dragged
+            newNodes.push({
+              ...initialNode,
+              position: existingNode.position,
+            });
+          } else {
+            // No changes - keep existing node as-is
+            newNodes.push(existingNode);
+          }
+        } else {
+          // New node - add it
+          newNodes.push(initialNode);
+        }
+      }
+
+      return newNodes;
+    });
+
+    setEdges((currentEdges) => {
+      if (currentEdges.length === 0) {
+        return initialEdges;
+      }
+
+      // Create sets of edge IDs for quick lookup
+      const currentEdgeIdSet: Record<string, boolean> = {};
+      const initialEdgeIdSet: Record<string, boolean> = {};
+      for (const edge of currentEdges) currentEdgeIdSet[edge.id] = true;
+      for (const edge of initialEdges) initialEdgeIdSet[edge.id] = true;
+
+      // Keep existing edges that are still valid, add new edges
+      const newEdges: Edge[] = [];
+
+      // Keep edges that exist in both
+      for (const edge of currentEdges) {
+        if (initialEdgeIdSet[edge.id]) {
+          newEdges.push(edge);
+        }
+      }
+
+      // Add new edges that don't exist yet
+      for (const edge of initialEdges) {
+        if (!currentEdgeIdSet[edge.id]) {
+          newEdges.push(edge);
+        }
+      }
+
+      return newEdges;
+    });
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   const handleSelectionChange: OnSelectionChangeFunc = useCallback(
