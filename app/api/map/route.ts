@@ -2,24 +2,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import { streamObject } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { createClient } from '@/lib/supabase/server';
-import { mapSchema } from '@/lib/schemas/map';
+import { mapSchema, mapReplacementResponseSchema, Map as MapType } from '@/lib/schemas/map';
+import { z } from 'zod';
+import {
+  filterRedundantNodes,
+  getNodeByPath,
+  replaceNodeInMap,
+  replaceSiblingNodesInMap,
+} from '@/lib/mapUtils';
 
-async function generateMap(reportText: string) {
-  const systemPrompt = `You are a mind map generator, tasked to convert a markdown report into a hierarchical structure for mind map visualization. Given the markdown report, extract the headings into a recursive tree structure where each node has a title, text, and sections (child nodes). The root node's title should be the main title (# heading), and its sections should contain the child nodes for each ## heading, which in turn have their own sections for ### headings, and so on recursively. You should discard the text content and only extract the headings. You must extract exactly literally in full faithfully to the original markdown report. Remove any heading markdown formatting, e.g. "#", "##", "###", "####", "1.", "1.1.", "1.1.1.", "1)", "2)", "3)", etc.
-
-Report:
-${reportText}`;
-
-  return streamObject({
-    model: openai('gpt-5-nano'),
-    prompt: systemPrompt,
-    schema: mapSchema,
-  });
-}
+// Request body schema
+const requestSchema = z.object({
+  projectId: z.string(),
+  prompt: z.string(),
+  selectedNodes: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    text: z.string().optional(),
+  })),
+  currentMap: mapSchema,
+});
 
 async function saveMapToDatabase(
   projectId: string,
-  map: unknown,
+  map: MapType,
   supabase: Awaited<ReturnType<typeof createClient>>
 ) {
   const { error } = await supabase
@@ -35,30 +41,119 @@ async function saveMapToDatabase(
   console.log("Map saved to Supabase successfully");
 }
 
+function buildReplacementPrompt(
+  prompt: string,
+  selectedNodes: { id: string; label: string; text?: string }[],
+  currentMap: MapType,
+  isSingleNode: boolean
+): string {
+  // Build context about selected nodes
+  const selectedContext = selectedNodes
+    .map(node => {
+      const fullNode = getNodeByPath(currentMap, node.id);
+      const childCount = fullNode?.sections?.length || 0;
+      return `- "${node.label}"${node.text ? `: ${node.text}` : ''}${childCount > 0 ? ` (has ${childCount} children)` : ''}`;
+    })
+    .join('\n');
+
+  const nodeCount = selectedNodes.length;
+  const nodeWord = nodeCount === 1 ? 'node' : 'nodes';
+
+  return `You are a mind map editor. The user has selected ${nodeCount} ${nodeWord} from their mind map and wants to replace ${nodeCount === 1 ? 'it' : 'them'} based on their prompt.
+
+Selected ${nodeWord}:
+${selectedContext}
+
+User's request: ${prompt}
+
+Generate ${isSingleNode ? 'a replacement node' : `${nodeCount} replacement nodes`} with the following structure:
+- title: The heading/label for the node
+- text: Optional descriptive text for the node
+- sections: Optional array of child nodes (recursive structure)
+
+${isSingleNode
+    ? 'Return exactly 1 node in the nodes array that will replace the selected node.'
+    : `Return exactly ${nodeCount} nodes in the nodes array that will replace the ${nodeCount} selected sibling nodes.`}
+
+The replacement should:
+1. Follow the user's instructions in the prompt
+2. Maintain appropriate depth and detail
+3. Be coherent with the overall map structure`;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    console.log("Received map generation request");
+    console.log("Received map replacement request");
 
-    const { projectId, reportText } = await request.json();
+    const body = await request.json();
+    const parsed = requestSchema.safeParse(body);
 
-    if (!projectId || !reportText) {
+    if (!parsed.success) {
+      console.error("Invalid request body:", parsed.error);
       return NextResponse.json(
-        { error: "projectId and reportText are required" },
+        { error: "Invalid request body", details: parsed.error },
+        { status: 400 }
+      );
+    }
+
+    const { projectId, prompt, selectedNodes, currentMap } = parsed.data;
+
+    if (selectedNodes.length === 0) {
+      return NextResponse.json(
+        { error: "At least one node must be selected" },
         { status: 400 }
       );
     }
 
     const supabase = await createClient();
 
-    // Generate map from report text
-    console.log("Starting map generation");
-    const result = await generateMap(reportText);
+    // Filter out redundant child nodes (if parent is selected, children are ignored)
+    const nodeIds = selectedNodes.map(n => n.id);
+    const filteredIds = filterRedundantNodes(nodeIds);
+    const filteredNodes = selectedNodes.filter(n => filteredIds.includes(n.id));
 
-    // Fire-and-forget: save to database after stream is consumed
+    const isSingleNode = filteredNodes.length === 1;
+
+    console.log(`Processing ${filteredNodes.length} node(s) for replacement`);
+
+    const systemPrompt = buildReplacementPrompt(
+      prompt,
+      filteredNodes,
+      currentMap,
+      isSingleNode
+    );
+
+    // Stream the replacement generation
+    const result = await streamObject({
+      model: openai('gpt-4o-mini'),
+      prompt: systemPrompt,
+      schema: mapReplacementResponseSchema,
+    });
+
+    // Save to database after stream completes
     (async () => {
       try {
         const finalObject = await result.object;
-        await saveMapToDatabase(projectId, finalObject, supabase);
+
+        if (finalObject && finalObject.nodes && finalObject.nodes.length > 0) {
+          let updatedMap: MapType;
+
+          if (isSingleNode) {
+            updatedMap = replaceNodeInMap(
+              currentMap,
+              filteredIds[0],
+              finalObject.nodes[0]
+            );
+          } else {
+            updatedMap = replaceSiblingNodesInMap(
+              currentMap,
+              filteredIds,
+              finalObject.nodes
+            );
+          }
+
+          await saveMapToDatabase(projectId, updatedMap, supabase);
+        }
       } catch (error) {
         console.error('Failed to save map to database:', error);
       }

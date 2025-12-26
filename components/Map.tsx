@@ -38,14 +38,16 @@ const VERTICAL_SPACING = 120;
 export interface SelectedNode {
   id: string;
   label: string;
+  text?: string;
 }
 
 interface MapProps {
   report: MapType | null;
   onSelectionChange?: (nodes: SelectedNode[]) => void;
+  isStreaming?: boolean;
 }
 
-export default function Map({ report, onSelectionChange }: MapProps) {
+export default function Map({ report, onSelectionChange, isStreaming = false }: MapProps) {
   const { initialNodes, initialEdges } = useMemo(() => {
     if (!report) {
       return { initialNodes: [], initialEdges: [] };
@@ -152,15 +154,27 @@ export default function Map({ report, onSelectionChange }: MapProps) {
         return initialNodes;
       }
 
-      // Create a map of current nodes by ID for quick lookup
+      // Create map for quick lookup
       const currentNodeMap = Object.fromEntries(currentNodes.map((node) => [node.id, node]));
+
+      // Detect if tree structure has changed (nodes added/removed)
+      // If structure changed, we need to use new positions for proper layout
+      const currentIds = new Set(currentNodes.map(n => n.id));
+      const initialIds = new Set(initialNodes.map(n => n.id));
+      const structureChanged =
+        initialNodes.length !== currentNodes.length ||
+        initialNodes.some(n => !currentIds.has(n.id)) ||
+        currentNodes.some(n => !initialIds.has(n.id));
 
       // Build the new nodes array
       const newNodes: Node[] = [];
+      const processedIds = new Set<string>();
 
-      // Add/update nodes from initialNodes
+      // Add/update nodes from initialNodes (these have the correct new positions)
       for (const initialNode of initialNodes) {
+        processedIds.add(initialNode.id);
         const existingNode = currentNodeMap[initialNode.id];
+
         if (existingNode) {
           // Node exists - check if data has changed
           const dataChanged =
@@ -168,19 +182,33 @@ export default function Map({ report, onSelectionChange }: MapProps) {
             existingNode.data.text !== initialNode.data.text ||
             existingNode.data.hasChildren !== initialNode.data.hasChildren;
 
-          if (dataChanged) {
-            // Update data but preserve position if node was dragged
+          if (dataChanged || isStreaming || structureChanged) {
+            // Use new position when:
+            // - isStreaming is true (for proper layout during streaming)
+            // - structureChanged is true (tree structure changed, need new layout)
+            // Otherwise preserve existing position (for user-dragged nodes)
             newNodes.push({
               ...initialNode,
-              position: existingNode.position,
+              position: (isStreaming || structureChanged) ? initialNode.position : existingNode.position,
             });
           } else {
             // No changes - keep existing node as-is
             newNodes.push(existingNode);
           }
         } else {
-          // New node - add it
+          // New node - add it with its calculated position
           newNodes.push(initialNode);
+        }
+      }
+
+      // Keep nodes that exist in currentNodes but not in initialNodes
+      // This prevents nodes from disappearing during streaming when the map is partially built
+      if (isStreaming) {
+        for (const currentNode of currentNodes) {
+          if (!processedIds.has(currentNode.id)) {
+            // Node exists in current but not in initial - keep it to prevent flickering
+            newNodes.push(currentNode);
+          }
         }
       }
 
@@ -205,6 +233,10 @@ export default function Map({ report, onSelectionChange }: MapProps) {
       for (const edge of currentEdges) {
         if (initialEdgeIdSet[edge.id]) {
           newEdges.push(edge);
+        } else if (isStreaming) {
+          // During streaming, keep edges that don't exist in initial yet
+          // This prevents edges from disappearing when the map is partially built
+          newEdges.push(edge);
         }
       }
 
@@ -217,7 +249,7 @@ export default function Map({ report, onSelectionChange }: MapProps) {
 
       return newEdges;
     });
-  }, [initialNodes, initialEdges, setNodes, setEdges]);
+  }, [initialNodes, initialEdges, setNodes, setEdges, isStreaming]);
 
   const handleSelectionChange: OnSelectionChangeFunc = useCallback(
     ({ nodes: selectedNodes }) => {
@@ -225,6 +257,7 @@ export default function Map({ report, onSelectionChange }: MapProps) {
         const selected = selectedNodes.map((node) => ({
           id: node.id,
           label: node.data.label as string,
+          text: node.data.text as string | undefined,
         }));
         onSelectionChange(selected);
       }

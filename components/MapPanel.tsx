@@ -1,13 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useMemo, useState, useCallback } from "react";
-import { useCompletion } from "@ai-sdk/react";
+import { useCompletion, experimental_useObject as useObject } from "@ai-sdk/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PanelLeftIcon, PanelRightIcon, Plus as IconPlus, FileText, X as XIcon, ArrowUpIcon, BoxIcon } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
 import { useMap } from "@/components/MapContext";
 import { parseReportToMap } from "@/lib/formatMap";
+import { mapReplacementResponseSchema, Map as MapType } from "@/lib/schemas/map";
+import {
+  filterRedundantNodes,
+  replaceNodeInMap,
+  replaceSiblingNodesInMap,
+} from "@/lib/mapUtils";
 import Map, { SelectedNode } from "@/components/Map";
 import {
   InputGroup,
@@ -25,16 +31,20 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB in bytes
 const ACCEPTED_FILE_TYPES = ".pdf,.docx,.txt,.md,.png,.jpg,.jpeg";
 
 export default function MapPanel({ projectId }: MapPanelProps) {
-  const { isLoading, error, getProjectData, currentProject } = useProject();
+  const { isLoading, error, getProjectData, currentProject, setCurrentProject } = useProject();
   const { setIsGenerating, setRegenerate } = useMap();
   const reportGeneratedRef = useRef(false);
   const generateReportRef = useRef<(prompt: string) => void>(() => { });
+  const currentProjectRef = useRef(currentProject);
+  const replacementNodeIdsRef = useRef<string[]>([]);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [userInput, setUserInput] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedNodes, setSelectedNodes] = useState<SelectedNode[]>([]);
   const [fileError, setFileError] = useState<string>("");
+  const [isReplacingNodes, setIsReplacingNodes] = useState(false);
+  const [replacementNodeIds, setReplacementNodeIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Listen to sidebar state changes via data attributes
@@ -105,10 +115,70 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     },
   });
 
-  // Keep ref in sync with latest generateReport
+  // Hook: Replace selected nodes with AI-generated content
+  const {
+    object: replacementObject,
+    submit: submitReplacement,
+    isLoading: isReplacingLoading,
+  } = useObject({
+    api: '/api/map',
+    schema: mapReplacementResponseSchema,
+    onFinish: (event) => {
+      // Update local project state with the final merged map
+      // No need to refresh from database - the API saves in the background
+      // Use refs to get current values, avoiding stale closure issues
+      const project = currentProjectRef.current;
+      const nodeIds = replacementNodeIdsRef.current;
+
+      if (event.object?.nodes && event.object.nodes.length > 0 && project) {
+        const baseMap = project.map as MapType;
+        let updatedMap: MapType;
+
+        if (nodeIds.length === 1) {
+          updatedMap = replaceNodeInMap(
+            baseMap,
+            nodeIds[0],
+            event.object.nodes[0] as MapType
+          );
+        } else {
+          updatedMap = replaceSiblingNodesInMap(
+            baseMap,
+            nodeIds,
+            event.object.nodes as MapType[]
+          );
+        }
+
+        // Update project state with the final merged map
+        setCurrentProject({
+          ...project,
+          map: updatedMap,
+        });
+      }
+
+      // Clear replacement state
+      setIsReplacingNodes(false);
+      setReplacementNodeIds([]);
+      setSelectedNodes([]);
+    },
+    onError: (error) => {
+      console.error('Replacement error:', error);
+      setIsReplacingNodes(false);
+      setReplacementNodeIds([]);
+    },
+  });
+
+  // Keep refs in sync with latest values
   useEffect(() => {
     generateReportRef.current = generateReport;
   }, [generateReport]);
+
+  useEffect(() => {
+    currentProjectRef.current = currentProject;
+  }, [currentProject]);
+
+  useEffect(() => {
+    replacementNodeIdsRef.current = replacementNodeIds;
+  }, [replacementNodeIds]);
 
   // Load project data on mount
   useEffect(() => {
@@ -127,12 +197,37 @@ export default function MapPanel({ projectId }: MapPanelProps) {
 
   // Parse streaming report text into map, fallback to database map
   const map = useMemo(() => {
-    // Priority: streaming text > database
+    // If we're actively replacing and have partial results, merge them
+    if (isReplacingNodes && replacementObject?.nodes && replacementNodeIds.length > 0 && currentProject?.map) {
+      const baseMap = currentProject.map as MapType;
+
+      if (replacementNodeIds.length === 1) {
+        // Single node replacement
+        if (replacementObject.nodes[0]) {
+          return replaceNodeInMap(
+            baseMap,
+            replacementNodeIds[0],
+            replacementObject.nodes[0] as MapType
+          );
+        }
+      } else if (replacementNodeIds.length > 1) {
+        // Multiple sibling replacement
+        if (replacementObject.nodes.length > 0) {
+          return replaceSiblingNodesInMap(
+            baseMap,
+            replacementNodeIds,
+            replacementObject.nodes as MapType[]
+          );
+        }
+      }
+    }
+
+    // Priority: streaming report text > database
     if (reportText) {
       return parseReportToMap(reportText);
     }
     return currentProject?.map || null;
-  }, [reportText, currentProject?.map]);
+  }, [reportText, currentProject?.map, isReplacingNodes, replacementObject, replacementNodeIds]);
 
   const handleRegenerate = useCallback(() => {
     reportGeneratedRef.current = false;
@@ -188,15 +283,36 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     setSelectedNodes(prev => prev.filter(node => node.id !== nodeId));
   };
 
-  const handleSend = () => {
-    if (userInput.trim() || selectedFiles.length > 0 || selectedNodes.length > 0) {
-      // TODO: Implement send functionality
+  const handleSend = useCallback(() => {
+    if (!userInput.trim() && selectedNodes.length === 0) {
+      return;
+    }
+
+    if (selectedNodes.length > 0 && userInput.trim() && map) {
+      // Node replacement mode
+      const nodeIds = selectedNodes.map(n => n.id);
+      const filteredIds = filterRedundantNodes(nodeIds);
+
+      setIsReplacingNodes(true);
+      setReplacementNodeIds(filteredIds);
+
+      submitReplacement({
+        projectId,
+        prompt: userInput,
+        selectedNodes: selectedNodes,
+        currentMap: map,
+      });
+
+      setUserInput("");
+      // Don't clear selectedNodes yet - we need them for the streaming update
+    } else if (userInput.trim() || selectedFiles.length > 0) {
+      // Other functionality (file upload, etc.)
       console.log("Send:", { userInput, selectedFiles, selectedNodes });
       setUserInput("");
       setSelectedFiles([]);
       setSelectedNodes([]);
     }
-  };
+  }, [userInput, selectedNodes, selectedFiles, map, projectId, submitReplacement]);
 
   // Register regenerate function with context
   useEffect(() => {
@@ -206,8 +322,8 @@ export default function MapPanel({ projectId }: MapPanelProps) {
 
   // Sync isGenerating state with context
   useEffect(() => {
-    setIsGenerating(isGeneratingReport);
-  }, [isGeneratingReport, setIsGenerating]);
+    setIsGenerating(isGeneratingReport || isReplacingLoading);
+  }, [isGeneratingReport, isReplacingLoading, setIsGenerating]);
 
   if (isLoading || error) {
     return null;
@@ -256,7 +372,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
         </Button>
       )}
       <div className="flex-1 overflow-auto flex justify-center">
-        <Map report={map} onSelectionChange={handleSelectionChange} />
+        <Map report={map} onSelectionChange={handleSelectionChange} isStreaming={isGeneratingReport || isReplacingNodes} />
       </div>
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-xl px-4">
         <input
