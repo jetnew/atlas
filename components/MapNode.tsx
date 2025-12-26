@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { Handle, Position } from "@xyflow/react";
+import { Handle, Position, NodeProps } from "@xyflow/react";
 import { Streamdown } from "streamdown";
 
 interface MapNodeData {
@@ -11,13 +11,17 @@ interface MapNodeData {
   isRoot?: boolean;
 }
 
-const MapNode = memo(({ data }: { data: MapNodeData }) => {
+const MapNode = memo(({ data, selected }: NodeProps & { data: MapNodeData }) => {
   const { label, text, hasChildren, isRoot } = data;
 
   return (
     <>
       {!isRoot && <Handle type="target" position={Position.Top} />}
-      <div className={`flex flex-col gap-2 p-3 w-[300px]`}>
+      <div
+        className={`p-3 w-[300px] rounded-lg transition-shadow ${
+          selected ? "ring-[3px] ring-ring/50 border-ring" : ""
+        }`}
+      >
         {text ? (
           <>
             <div className="font-medium text-sm mb-2">

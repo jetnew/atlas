@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { stratify, tree } from "d3-hierarchy";
 import {
   ReactFlow,
   Node,
   Edge,
   MarkerType,
-  SelectionMode,
+  useNodesState,
+  useEdgesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Map as MapType } from "@/lib/schemas/report";
@@ -28,9 +29,9 @@ interface FlatNode {
   colorIndex: number;
 }
 
-const NODE_WIDTH = 320;
+const NODE_WIDTH = 300;
 const NODE_HEIGHT = 100;
-const HORIZONTAL_SPACING = 0;
+const HORIZONTAL_SPACING = 20;
 const VERTICAL_SPACING = 120;
 
 interface MapProps {
@@ -38,9 +39,9 @@ interface MapProps {
 }
 
 export default function Map({ report }: MapProps) {
-  const { nodes, edges } = useMemo(() => {
+  const { initialNodes, initialEdges } = useMemo(() => {
     if (!report || !report.report || !report.report.sections) {
-      return { nodes: [], edges: [] };
+      return { initialNodes: [], initialEdges: [] };
     }
 
     const flatNodes: FlatNode[] = [];
@@ -154,7 +155,7 @@ export default function Map({ report }: MapProps) {
 
     // Convert to ReactFlow nodes with computed positions
     const nodes: Node[] = root.descendants().map((d) => {
-      const color = NODE_COLORS[d.data.colorIndex];
+      const colorClasses = NODE_COLORS[d.data.colorIndex];
       return {
         id: d.data.id,
         data: {
@@ -165,15 +166,20 @@ export default function Map({ report }: MapProps) {
         },
         position: { x: d.x!, y: d.y! },
         type: "map",
-        style: {
-          backgroundColor: color[1],
-          border: `2px solid ${color[0]}`,
-        },
+        className: `${colorClasses} border-2 rounded-lg`,
       };
     });
 
-    return { nodes, edges };
+    return { initialNodes: nodes, initialEdges: edges };
   }, [report]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   if (!report) {
     return (
@@ -186,6 +192,8 @@ export default function Map({ report }: MapProps) {
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{
