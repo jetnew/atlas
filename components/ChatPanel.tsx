@@ -160,6 +160,16 @@ export default function ChatPanel({ projectId }: ChatPanelProps) {
     fetchChats(projectId);
   }, [fetchChats, projectId, setContextMessages]);
 
+  const handleSidebarOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      setView("default");
+      setChatId(null);
+      setIsNewChat(false);
+      // Clear messages from context so breadcrumbs reset
+      setContextMessages([]);
+    }
+  }, [setContextMessages]);
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -185,15 +195,7 @@ export default function ChatPanel({ projectId }: ChatPanelProps) {
       side="right"
       variant="floating"
       keyboardShortcut="l"
-      onOpenChange={(open) => {
-        if (!open) {
-          setView("default");
-          setChatId(null);
-          setIsNewChat(false);
-          // Clear messages from context so breadcrumbs reset
-          setContextMessages([]);
-        }
-      }}
+      onOpenChange={handleSidebarOpenChange}
       onDragOver={view === "chat" ? handleDragOver : undefined}
       onDragLeave={view === "chat" ? handleDragLeave : undefined}
       onDrop={view === "chat" ? handleDrop : undefined}
