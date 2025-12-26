@@ -149,16 +149,26 @@ export default function MapPanel({ projectId }: MapPanelProps) {
         }
 
         // Update project state with the final merged map
+        // Clear replacement state AFTER updating project to avoid race condition
+        // where useMemo reads stale currentProject.map
         setCurrentProject({
           ...project,
           map: updatedMap,
         });
-      }
 
-      // Clear replacement state
-      setIsReplacingNodes(false);
-      setReplacementNodeIds([]);
-      setSelectedNodes([]);
+        // Use callback to ensure these run after the project update
+        // React batches these, but the order matters for the useMemo
+        setTimeout(() => {
+          setIsReplacingNodes(false);
+          setReplacementNodeIds([]);
+          setSelectedNodes([]);
+        }, 0);
+      } else {
+        // No valid replacement, just clear state
+        setIsReplacingNodes(false);
+        setReplacementNodeIds([]);
+        setSelectedNodes([]);
+      }
     },
     onError: (error) => {
       console.error('Replacement error:', error);
