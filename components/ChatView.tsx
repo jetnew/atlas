@@ -18,7 +18,6 @@ import {
   InputGroupAddon,
   InputGroupButton,
 } from "@/components/ui/input-group";
-import { useChatContext } from "@/components/ChatContext";
 
 function ToggleButton({ onToggle }: { onToggle?: () => void }) {
   const { toggle } = useSidebarToggle();
@@ -50,7 +49,6 @@ export default function ChatView({ onBack, isDragging, chatId, projectId, isNewC
   const [fileError, setFileError] = useState<string>("");
   const [isLoadingChat, setIsLoadingChat] = useState(!isNewChat);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { setMessages: setContextMessages } = useChatContext();
 
   const { messages, sendMessage, status, setMessages } = useAIChat({
     id: chatId,
@@ -84,11 +82,6 @@ export default function ChatView({ onBack, isDragging, chatId, projectId, isNewC
       setIsLoadingChat(false);
     }
   }, [chatId, isNewChat, setMessages]);
-
-  // Sync messages to context whenever they change
-  useEffect(() => {
-    setContextMessages(messages);
-  }, [messages, setContextMessages]);
 
   const validateAndAddFiles = (files: File[]) => {
     setFileError("");
