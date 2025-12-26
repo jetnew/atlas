@@ -20,12 +20,20 @@ interface MapPanelProps {
   projectId: string;
 }
 
+const MAX_FILES = 10;
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB in bytes
+const ACCEPTED_FILE_TYPES = ".pdf,.docx,.txt,.md,.png,.jpg,.jpeg";
+
 export default function MapPanel({ projectId }: MapPanelProps) {
   const { isLoading, error, getProjectData, currentProject } = useProject();
   const { setIsGenerating, setRegenerate } = useReport();
   const reportGeneratedRef = useRef(false);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+  const [userInput, setUserInput] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [fileError, setFileError] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Listen to sidebar state changes via data attributes
   useEffect(() => {
@@ -131,6 +139,56 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     generateReport('');
   }, [generateReport]);
 
+  const validateAndAddFiles = (files: File[]) => {
+    setFileError("");
+
+    if (selectedFiles.length + files.length > MAX_FILES) {
+      setFileError(`Maximum ${MAX_FILES} files allowed`);
+      return false;
+    }
+
+    const oversizedFiles = files.filter(file => file.size > MAX_FILE_SIZE);
+    if (oversizedFiles.length > 0) {
+      setFileError(`File(s) exceed 50 MB limit: ${oversizedFiles.map(f => f.name).join(", ")}`);
+      return false;
+    }
+
+    const invalidFiles = files.filter(file => {
+      const extension = "." + file.name.split(".").pop()?.toLowerCase();
+      return !ACCEPTED_FILE_TYPES.includes(extension);
+    });
+
+    if (invalidFiles.length > 0) {
+      setFileError(`Invalid file type(s): ${invalidFiles.map(f => f.name).join(", ")}`);
+      return false;
+    }
+
+    setSelectedFiles(prev => [...prev, ...files]);
+    return true;
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    validateAndAddFiles(files);
+    if (e.target) {
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveFile = (indexToRemove: number) => {
+    setSelectedFiles(prev => prev.filter((_, index) => index !== indexToRemove));
+    setFileError("");
+  };
+
+  const handleSend = () => {
+    if (userInput.trim() || selectedFiles.length > 0) {
+      // TODO: Implement send functionality
+      console.log("Send:", { userInput, selectedFiles });
+      setUserInput("");
+      setSelectedFiles([]);
+    }
+  };
+
   // Register regenerate function with context
   useEffect(() => {
     setRegenerate(handleRegenerate);
@@ -190,6 +248,82 @@ export default function MapPanel({ projectId }: MapPanelProps) {
       )}
       <div className="flex-1 overflow-auto flex justify-center">
         <Map report={map} />
+      </div>
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-xl px-4">
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept={ACCEPTED_FILE_TYPES}
+          onChange={handleFileChange}
+          className="sr-only"
+          aria-label="Upload files"
+        />
+        <InputGroup className="bg-white shadow-lg">
+          <InputGroupTextarea
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
+            placeholder="Organize map..."
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+          />
+          {fileError && (
+            <div className="px-3 pb-2 text-xs text-destructive">
+              {fileError}
+            </div>
+          )}
+          <InputGroupAddon align="block-end" className="justify-between w-full">
+            <div className="flex gap-2 items-center flex-1 overflow-hidden">
+              <InputGroupButton
+                variant="outline"
+                className="rounded-full shrink-0"
+                size="icon-xs"
+                onClick={() => fileInputRef.current?.click()}
+                type="button"
+              >
+                <IconPlus />
+                <span className="sr-only">Upload files</span>
+              </InputGroupButton>
+              {selectedFiles.length > 0 && (
+                <div className="flex gap-1 items-center overflow-x-auto scrollbar-hide">
+                  {selectedFiles.map((file, index) => (
+                    <Badge
+                      key={`${file.name}-${index}`}
+                      variant="secondary"
+                      className="pl-2 pr-2 group/badge cursor-pointer shrink-0"
+                    >
+                      <FileText className="group-hover/badge:hidden" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(index)}
+                        className="hidden group-hover/badge:block cursor-pointer"
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <XIcon className="h-3 w-3" />
+                      </button>
+                      <span className="truncate max-w-[120px]">{file.name}</span>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+            <InputGroupButton
+              variant="default"
+              className="rounded-full shrink-0"
+              size="icon-xs"
+              disabled={!userInput.trim() && selectedFiles.length === 0}
+              onClick={handleSend}
+              type="button"
+            >
+              <ArrowUpIcon />
+              <span className="sr-only">Send</span>
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
       </div>
     </div>
   );
