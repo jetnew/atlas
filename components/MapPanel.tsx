@@ -3,11 +3,18 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import { useCompletion } from "@ai-sdk/react";
 import { Button } from "@/components/ui/button";
-import { PanelLeftIcon, PanelRightIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { PanelLeftIcon, PanelRightIcon, Plus as IconPlus, FileText, X as XIcon, ArrowUpIcon } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
 import { useReport } from "@/components/ReportContext";
 import { parseReportToMap } from "@/lib/formatReport";
 import Map from "@/components/Map";
+import {
+  InputGroup,
+  InputGroupTextarea,
+  InputGroupAddon,
+  InputGroupButton,
+} from "@/components/ui/input-group";
 
 interface MapPanelProps {
   projectId: string;
