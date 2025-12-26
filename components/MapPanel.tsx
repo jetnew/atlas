@@ -4,11 +4,11 @@ import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import { useCompletion } from "@ai-sdk/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PanelLeftIcon, PanelRightIcon, Plus as IconPlus, FileText, X as XIcon, ArrowUpIcon } from "lucide-react";
+import { PanelLeftIcon, PanelRightIcon, Plus as IconPlus, FileText, X as XIcon, ArrowUpIcon, BoxIcon } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
 import { useReport } from "@/components/ReportContext";
 import { parseReportToMap } from "@/lib/formatReport";
-import Map from "@/components/Map";
+import Map, { SelectedNode } from "@/components/Map";
 import {
   InputGroup,
   InputGroupTextarea,
@@ -32,6 +32,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [userInput, setUserInput] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedNodes, setSelectedNodes] = useState<SelectedNode[]>([]);
   const [fileError, setFileError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -180,12 +181,21 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     setFileError("");
   };
 
+  const handleSelectionChange = useCallback((nodes: SelectedNode[]) => {
+    setSelectedNodes(nodes);
+  }, []);
+
+  const handleRemoveNode = (nodeId: string) => {
+    setSelectedNodes(prev => prev.filter(node => node.id !== nodeId));
+  };
+
   const handleSend = () => {
-    if (userInput.trim() || selectedFiles.length > 0) {
+    if (userInput.trim() || selectedFiles.length > 0 || selectedNodes.length > 0) {
       // TODO: Implement send functionality
-      console.log("Send:", { userInput, selectedFiles });
+      console.log("Send:", { userInput, selectedFiles, selectedNodes });
       setUserInput("");
       setSelectedFiles([]);
+      setSelectedNodes([]);
     }
   };
 
@@ -247,7 +257,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
         </Button>
       )}
       <div className="flex-1 overflow-auto flex justify-center">
-        <Map report={map} />
+        <Map report={map} onSelectionChange={handleSelectionChange} />
       </div>
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-xl px-4">
         <input
@@ -288,8 +298,26 @@ export default function MapPanel({ projectId }: MapPanelProps) {
                 <IconPlus />
                 <span className="sr-only">Upload files</span>
               </InputGroupButton>
-              {selectedFiles.length > 0 && (
+              {(selectedFiles.length > 0 || selectedNodes.length > 0) && (
                 <div className="flex gap-1 items-center overflow-x-auto scrollbar-hide">
+                  {selectedNodes.map((node) => (
+                    <Badge
+                      key={node.id}
+                      variant="secondary"
+                      className="pl-2 pr-2 group/badge cursor-pointer shrink-0"
+                    >
+                      <BoxIcon className="group-hover/badge:hidden" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveNode(node.id)}
+                        className="hidden group-hover/badge:block cursor-pointer"
+                        aria-label={`Remove ${node.label}`}
+                      >
+                        <XIcon className="h-3 w-3" />
+                      </button>
+                      <span className="truncate max-w-[120px]">{node.label}</span>
+                    </Badge>
+                  ))}
                   {selectedFiles.map((file, index) => (
                     <Badge
                       key={`${file.name}-${index}`}
@@ -315,7 +343,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
               variant="default"
               className="rounded-full shrink-0"
               size="icon-xs"
-              disabled={!userInput.trim() && selectedFiles.length === 0}
+              disabled={!userInput.trim() && selectedFiles.length === 0 && selectedNodes.length === 0}
               onClick={handleSend}
               type="button"
             >

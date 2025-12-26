@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useCallback } from "react";
 import { stratify, tree } from "d3-hierarchy";
 import {
   ReactFlow,
@@ -9,6 +9,7 @@ import {
   MarkerType,
   useNodesState,
   useEdgesState,
+  OnSelectionChangeFunc,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Map as MapType } from "@/lib/schemas/report";
@@ -34,11 +35,17 @@ const NODE_HEIGHT = 100;
 const HORIZONTAL_SPACING = 20;
 const VERTICAL_SPACING = 120;
 
-interface MapProps {
-  report: MapType | null;
+export interface SelectedNode {
+  id: string;
+  label: string;
 }
 
-export default function Map({ report }: MapProps) {
+interface MapProps {
+  report: MapType | null;
+  onSelectionChange?: (nodes: SelectedNode[]) => void;
+}
+
+export default function Map({ report, onSelectionChange }: MapProps) {
   const { initialNodes, initialEdges } = useMemo(() => {
     if (!report || !report.report || !report.report.sections) {
       return { initialNodes: [], initialEdges: [] };
@@ -181,6 +188,19 @@ export default function Map({ report }: MapProps) {
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
+  const handleSelectionChange: OnSelectionChangeFunc = useCallback(
+    ({ nodes: selectedNodes }) => {
+      if (onSelectionChange) {
+        const selected = selectedNodes.map((node) => ({
+          id: node.id,
+          label: node.data.label as string,
+        }));
+        onSelectionChange(selected);
+      }
+    },
+    [onSelectionChange]
+  );
+
   if (!report) {
     return (
       null
@@ -194,6 +214,7 @@ export default function Map({ report }: MapProps) {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onSelectionChange={handleSelectionChange}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{
