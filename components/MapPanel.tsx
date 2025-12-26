@@ -197,32 +197,39 @@ export default function MapPanel({ projectId }: MapPanelProps) {
 
   // Parse streaming report text into map, fallback to database map
   const map = useMemo(() => {
-    // If we're actively replacing and have partial results, merge them
-    if (isReplacingNodes && replacementObject?.nodes && replacementNodeIds.length > 0 && currentProject?.map) {
+    // During node replacement, always use currentProject.map as the base
+    // This ensures stability while waiting for replacementObject to stream in
+    if (isReplacingNodes && currentProject?.map) {
       const baseMap = currentProject.map as MapType;
 
-      if (replacementNodeIds.length === 1) {
-        // Single node replacement
-        if (replacementObject.nodes[0]) {
-          return replaceNodeInMap(
-            baseMap,
-            replacementNodeIds[0],
-            replacementObject.nodes[0] as MapType
-          );
-        }
-      } else if (replacementNodeIds.length > 1) {
-        // Multiple sibling replacement
-        if (replacementObject.nodes.length > 0) {
-          return replaceSiblingNodesInMap(
-            baseMap,
-            replacementNodeIds,
-            replacementObject.nodes as MapType[]
-          );
+      // If we have partial/complete replacement results, merge them
+      if (replacementObject?.nodes && replacementNodeIds.length > 0) {
+        if (replacementNodeIds.length === 1) {
+          // Single node replacement
+          if (replacementObject.nodes[0]) {
+            return replaceNodeInMap(
+              baseMap,
+              replacementNodeIds[0],
+              replacementObject.nodes[0] as MapType
+            );
+          }
+        } else if (replacementNodeIds.length > 1) {
+          // Multiple sibling replacement
+          if (replacementObject.nodes.length > 0) {
+            return replaceSiblingNodesInMap(
+              baseMap,
+              replacementNodeIds,
+              replacementObject.nodes as MapType[]
+            );
+          }
         }
       }
+
+      // No replacement data yet, use base map as-is to maintain stability
+      return baseMap;
     }
 
-    // Priority: streaming report text > database
+    // Not replacing: priority is streaming report text > database
     if (reportText) {
       return parseReportToMap(reportText);
     }
@@ -372,7 +379,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
         </Button>
       )}
       <div className="flex-1 overflow-auto flex justify-center">
-        <Map report={map} onSelectionChange={handleSelectionChange} isStreaming={isGeneratingReport || isReplacingNodes} />
+        <Map report={map} onSelectionChange={handleSelectionChange} />
       </div>
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-xl px-4">
         <input

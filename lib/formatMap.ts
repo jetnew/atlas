@@ -36,7 +36,9 @@ export function parseReportToMap(reportText: string): Map {
   // This prevents partial headings from being parsed during streaming
   const allLines = reportText.split('\n');
   const hasTrailingNewline = reportText.endsWith('\n');
-  const lines = hasTrailingNewline ? allLines.slice(0, -1) : allLines.slice(0, -1);
+  // If there's a trailing newline, split creates an empty string at the end - remove it
+  // If there's no trailing newline, keep all lines (the last line is complete enough to parse)
+  const lines = hasTrailingNewline ? allLines.slice(0, -1) : allLines;
 
   // Initialize result structure
   const result: Map = {

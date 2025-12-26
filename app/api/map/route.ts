@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     // Stream the replacement generation
     const result = await streamObject({
-      model: openai('gpt-4o-mini'),
+      model: openai('gpt-5-mini'),
       prompt: systemPrompt,
       schema: mapReplacementResponseSchema,
     });
