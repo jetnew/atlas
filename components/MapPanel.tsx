@@ -359,89 +359,89 @@ export default function MapPanel({ projectId }: MapPanelProps) {
             aria-label="Upload files"
           />
           <InputGroup className="bg-white shadow-lg">
-          <InputGroupTextarea
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            placeholder="Organize map..."
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-          />
-          {fileError && (
-            <div className="px-3 pb-2 text-xs text-destructive">
-              {fileError}
-            </div>
-          )}
-          <InputGroupAddon align="block-end" className="justify-between w-full">
-            <div className="flex gap-2 items-center flex-1 overflow-hidden">
+            <InputGroupTextarea
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              placeholder="Organize map..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+            />
+            {fileError && (
+              <div className="px-3 pb-2 text-xs text-destructive">
+                {fileError}
+              </div>
+            )}
+            <InputGroupAddon align="block-end" className="justify-between w-full">
+              <div className="flex gap-2 items-center flex-1 overflow-hidden">
+                <InputGroupButton
+                  variant="outline"
+                  className="rounded-full shrink-0"
+                  size="icon-xs"
+                  onClick={() => fileInputRef.current?.click()}
+                  type="button"
+                >
+                  <IconPlus />
+                  <span className="sr-only">Upload files</span>
+                </InputGroupButton>
+                {(selectedFiles.length > 0 || selectedNodes.length > 0) && (
+                  <div className="flex gap-1 items-center overflow-x-auto scrollbar-hide">
+                    {selectedNodes.map((node) => (
+                      <Badge
+                        key={node.id}
+                        variant="secondary"
+                        className="pl-2 pr-2 group/badge cursor-pointer shrink-0"
+                      >
+                        <BoxIcon className="group-hover/badge:hidden" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveNode(node.id)}
+                          className="hidden group-hover/badge:block cursor-pointer"
+                          aria-label={`Remove ${node.label}`}
+                        >
+                          <XIcon className="h-3 w-3" />
+                        </button>
+                        <span className="truncate max-w-[120px]">{node.label}</span>
+                      </Badge>
+                    ))}
+                    {selectedFiles.map((file, index) => (
+                      <Badge
+                        key={`${file.name}-${index}`}
+                        variant="secondary"
+                        className="pl-2 pr-2 group/badge cursor-pointer shrink-0"
+                      >
+                        <FileText className="group-hover/badge:hidden" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(index)}
+                          className="hidden group-hover/badge:block cursor-pointer"
+                          aria-label={`Remove ${file.name}`}
+                        >
+                          <XIcon className="h-3 w-3" />
+                        </button>
+                        <span className="truncate max-w-[120px]">{file.name}</span>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
               <InputGroupButton
-                variant="outline"
+                variant="default"
                 className="rounded-full shrink-0"
                 size="icon-xs"
-                onClick={() => fileInputRef.current?.click()}
+                disabled={!userInput.trim() && selectedFiles.length === 0 && selectedNodes.length === 0}
+                onClick={handleSend}
                 type="button"
               >
-                <IconPlus />
-                <span className="sr-only">Upload files</span>
+                <ArrowUpIcon />
+                <span className="sr-only">Send</span>
               </InputGroupButton>
-              {(selectedFiles.length > 0 || selectedNodes.length > 0) && (
-                <div className="flex gap-1 items-center overflow-x-auto scrollbar-hide">
-                  {selectedNodes.map((node) => (
-                    <Badge
-                      key={node.id}
-                      variant="secondary"
-                      className="pl-2 pr-2 group/badge cursor-pointer shrink-0"
-                    >
-                      <BoxIcon className="group-hover/badge:hidden" />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveNode(node.id)}
-                        className="hidden group-hover/badge:block cursor-pointer"
-                        aria-label={`Remove ${node.label}`}
-                      >
-                        <XIcon className="h-3 w-3" />
-                      </button>
-                      <span className="truncate max-w-[120px]">{node.label}</span>
-                    </Badge>
-                  ))}
-                  {selectedFiles.map((file, index) => (
-                    <Badge
-                      key={`${file.name}-${index}`}
-                      variant="secondary"
-                      className="pl-2 pr-2 group/badge cursor-pointer shrink-0"
-                    >
-                      <FileText className="group-hover/badge:hidden" />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveFile(index)}
-                        className="hidden group-hover/badge:block cursor-pointer"
-                        aria-label={`Remove ${file.name}`}
-                      >
-                        <XIcon className="h-3 w-3" />
-                      </button>
-                      <span className="truncate max-w-[120px]">{file.name}</span>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-            <InputGroupButton
-              variant="default"
-              className="rounded-full shrink-0"
-              size="icon-xs"
-              disabled={!userInput.trim() && selectedFiles.length === 0 && selectedNodes.length === 0}
-              onClick={handleSend}
-              type="button"
-            >
-              <ArrowUpIcon />
-              <span className="sr-only">Send</span>
-            </InputGroupButton>
-          </InputGroupAddon>
-        </InputGroup>
-      </div>
+            </InputGroupAddon>
+          </InputGroup>
+        </div>
       )}
     </div>
   );
