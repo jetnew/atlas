@@ -65,12 +65,8 @@ function ProjectCard({ project, index }: ProjectCardProps) {
 
   return (
     <>
-      <Card 
-        className="cursor-pointer hover:shadow-lg transition-shadow w-64 h-40 flex flex-col relative group"
-        style={{
-          backgroundColor: color[1],
-          border: `2px solid ${color[0]}`,
-        }}
+      <Card
+        className={`cursor-pointer hover:shadow-lg transition-shadow w-64 h-40 flex flex-col relative group ${color}`}
       >
         <Link href={`/p/${project.id}`} className="flex flex-col h-full">
           <CardHeader className="pb-2">

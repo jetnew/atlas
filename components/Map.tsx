@@ -42,10 +42,10 @@ interface TreeData {
   children?: TreeData[];
 }
 
-const FALLBACK_WIDTH = 300;
+const FALLBACK_WIDTH = 200;
 const FALLBACK_HEIGHT = 80;
-const HORIZONTAL_SPACING = 40;
-const VERTICAL_SPACING = 80;
+const HORIZONTAL_SPACING = 10;
+const VERTICAL_SPACING = 60;
 const PADDING = 20;
 
 export interface SelectedNode {
