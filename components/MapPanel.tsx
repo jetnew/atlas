@@ -347,17 +347,18 @@ export default function MapPanel({ projectId }: MapPanelProps) {
       <div className="flex-1 overflow-auto flex justify-center">
         <Map report={map} onSelectionChange={handleSelectionChange} />
       </div>
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-xl px-4">
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept={ACCEPTED_FILE_TYPES}
-          onChange={handleFileChange}
-          className="sr-only"
-          aria-label="Upload files"
-        />
-        <InputGroup className="bg-white shadow-lg">
+      {selectedNodes.length > 0 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-xl px-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept={ACCEPTED_FILE_TYPES}
+            onChange={handleFileChange}
+            className="sr-only"
+            aria-label="Upload files"
+          />
+          <InputGroup className="bg-white shadow-lg">
           <InputGroupTextarea
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
@@ -441,6 +442,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
           </InputGroupAddon>
         </InputGroup>
       </div>
+      )}
     </div>
   );
 }
