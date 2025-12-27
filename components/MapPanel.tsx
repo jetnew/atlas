@@ -109,9 +109,17 @@ export default function MapPanel({ projectId }: MapPanelProps) {
   } = useCompletion({
     api: '/api/report',
     body: { projectId },
-    onFinish: () => {
-      // Refresh project data to get the saved map from database
-      getProjectData(projectId);
+    onFinish: (_prompt, completion) => {
+      // Update project state with the final parsed map from streaming
+      // No need to refetch from database - we already have the data
+      const finalMap = parseReportToMap(completion);
+      const project = currentProjectRef.current;
+      if (project && finalMap) {
+        setCurrentProject({
+          ...project,
+          map: finalMap,
+        });
+      }
     },
   });
 
