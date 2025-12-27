@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export interface Map {
   title: string;
-  text: string;
+  text?: string;
   sections: Map[];
 }
 
