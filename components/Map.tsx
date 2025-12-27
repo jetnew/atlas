@@ -240,6 +240,7 @@ export default function Map({ report, onSelectionChange }: MapProps) {
         proOptions={{
           hideAttribution: true,
         }}
+        onlyRenderVisibleElements
       >
       </ReactFlow>
       <style jsx global>{`
