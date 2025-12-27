@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PanelLeftIcon, PanelRightIcon, Plus as IconPlus, FileText, X as XIcon, ArrowUpIcon, BoxIcon } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
-import { mapReplacementResponseSchema, Map as MapType } from "@/lib/schemas/map";
+import { mapSchema, Map as MapType } from "@/lib/schemas/map";
+import { z } from "zod";
 import {
   parseReportToMap,
   filterRedundantNodes,
@@ -128,7 +129,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     isLoading: isReplacingLoading,
   } = useObject({
     api: '/api/map',
-    schema: mapReplacementResponseSchema,
+    schema: z.object({ nodes: z.array(mapSchema) }),
     onFinish: (event) => {
       // Update local project state with the final merged map
       // No need to refresh from database - the API saves in the background

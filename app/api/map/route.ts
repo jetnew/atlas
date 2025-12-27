@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { streamObject } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { createClient } from '@/lib/supabase/server';
-import { mapSchema, mapReplacementResponseSchema, Map as MapType } from '@/lib/schemas/map';
+import { mapSchema, Map as MapType } from '@/lib/schemas/map';
 import { z } from 'zod';
 import {
   filterRedundantNodes,
@@ -41,7 +41,7 @@ async function saveMapToDatabase(
   console.log("Map saved to Supabase successfully");
 }
 
-function buildReplacementPrompt(
+function constructPrompt(
   prompt: string,
   selectedNodes: { id: string; label: string; text?: string }[],
   currentMap: MapType,
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`Processing ${filteredNodes.length} node(s) for replacement`);
 
-    const systemPrompt = buildReplacementPrompt(
+    const systemPrompt = constructPrompt(
       prompt,
       filteredNodes,
       currentMap,
@@ -124,31 +124,31 @@ export async function POST(request: NextRequest) {
     );
 
     // Stream the replacement generation
-    const result = await streamObject({
-      model: openai('gpt-5-mini'),
+    const result = streamObject({
+      model: openai('gpt-5.2'),
       prompt: systemPrompt,
-      schema: mapReplacementResponseSchema,
+      schema: z.object({ nodes: z.array(mapSchema) }),
     });
 
     // Save to database after stream completes
     (async () => {
       try {
-        const finalObject = await result.object;
+        const { nodes } = await result.object;
 
-        if (finalObject && finalObject.nodes && finalObject.nodes.length > 0) {
+        if (nodes && nodes.length > 0) {
           let updatedMap: MapType;
 
           if (isSingleNode) {
             updatedMap = replaceNodeInMap(
               currentMap,
               filteredIds[0],
-              finalObject.nodes[0]
+              nodes[0]
             );
           } else {
             updatedMap = replaceSiblingNodesInMap(
               currentMap,
               filteredIds,
-              finalObject.nodes
+              nodes
             );
           }
 

@@ -12,6 +12,3 @@ export const mapSchema: z.ZodType<Map> = z.lazy(() => z.object({
   sections: z.array(mapSchema).default([]),
 }));
 
-export const mapReplacementResponseSchema = z.object({
-  nodes: z.array(mapSchema),
-});
