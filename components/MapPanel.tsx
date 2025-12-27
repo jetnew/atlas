@@ -6,13 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PanelLeftIcon, PanelRightIcon, Plus as IconPlus, FileText, X as XIcon, ArrowUpIcon, BoxIcon } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
-import { mapSchema, Map as MapType } from "@/lib/schemas/map";
+import { mapDiffSchema, Map as MapType, MapDiff } from "@/lib/schemas/map";
 import { z } from "zod";
 import {
   parseReportToMap,
-  filterRedundantNodes,
-  replaceNodeInMap,
-  replaceSiblingNodesInMap,
+  applyDiffs,
 } from "@/lib/mapUtils";
 import Map, { SelectedNode } from "@/components/Map";
 import {
@@ -32,15 +30,12 @@ export default function MapPanel({ projectId }: MapPanelProps) {
   const reportGeneratedRef = useRef(false);
   const generateReportRef = useRef<(prompt: string) => void>(() => { });
   const currentProjectRef = useRef(currentProject);
-  const replacementNodeIdsRef = useRef<string[]>([]);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [userInput, setUserInput] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedNodes, setSelectedNodes] = useState<SelectedNode[]>([]);
   const [fileError, setFileError] = useState<string>("");
-  const [isReplacingNodes, setIsReplacingNodes] = useState(false);
-  const [replacementNodeIds, setReplacementNodeIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Listen to sidebar state changes via data attributes
@@ -122,65 +117,38 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     },
   });
 
-  // Hook: Replace selected nodes with AI-generated content
+  // Hook: Apply diffs to update the map
   const {
-    object: replacementObject,
-    submit: submitReplacement,
-    isLoading: isReplacingLoading,
+    object: diffObject,
+    submit: submitDiffs,
+    isLoading: isDiffing,
   } = useObject({
     api: '/api/map',
-    schema: z.object({ nodes: z.array(mapSchema) }),
+    schema: z.object({ diffs: z.array(mapDiffSchema) }),
     onFinish: (event) => {
       // Update local project state with the final merged map
       // No need to refresh from database - the API saves in the background
-      // Use refs to get current values, avoiding stale closure issues
       const project = currentProjectRef.current;
-      const nodeIds = replacementNodeIdsRef.current;
 
-      if (event.object?.nodes && event.object.nodes.length > 0 && project) {
+      if (event.object?.diffs && event.object.diffs.length > 0 && project) {
         const baseMap = project.map as MapType;
-        let updatedMap: MapType;
+        const updatedMap = applyDiffs(baseMap, event.object.diffs as MapDiff[]);
 
-        if (nodeIds.length === 1) {
-          updatedMap = replaceNodeInMap(
-            baseMap,
-            nodeIds[0],
-            event.object.nodes[0] as MapType
-          );
-        } else {
-          updatedMap = replaceSiblingNodesInMap(
-            baseMap,
-            nodeIds,
-            event.object.nodes as MapType[]
-          );
-        }
-
-        // Update project state with the final merged map
-        // Clear replacement state AFTER updating project to avoid race condition
-        // where useMemo reads stale currentProject.map
         setCurrentProject({
           ...project,
           map: updatedMap,
         });
 
-        // Use callback to ensure these run after the project update
-        // React batches these, but the order matters for the useMemo
+        // Clear selection after update
         setTimeout(() => {
-          setIsReplacingNodes(false);
-          setReplacementNodeIds([]);
           setSelectedNodes([]);
         }, 0);
       } else {
-        // No valid replacement, just clear state
-        setIsReplacingNodes(false);
-        setReplacementNodeIds([]);
         setSelectedNodes([]);
       }
     },
     onError: (error) => {
-      console.error('Replacement error:', error);
-      setIsReplacingNodes(false);
-      setReplacementNodeIds([]);
+      console.error('Diff error:', error);
     },
   });
 
@@ -192,10 +160,6 @@ export default function MapPanel({ projectId }: MapPanelProps) {
   useEffect(() => {
     currentProjectRef.current = currentProject;
   }, [currentProject]);
-
-  useEffect(() => {
-    replacementNodeIdsRef.current = replacementNodeIds;
-  }, [replacementNodeIds]);
 
   // Load project data on mount
   useEffect(() => {
@@ -212,46 +176,51 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     }
   }, [currentProject, generateReport]);
 
-  // Parse streaming report text into map, fallback to database map
-  const map = useMemo(() => {
-    // During node replacement, always use currentProject.map as the base
-    // This ensures stability while waiting for replacementObject to stream in
-    if (isReplacingNodes && currentProject?.map) {
-      const baseMap = currentProject.map as MapType;
+  // Helper to check if a diff is complete (has all required fields)
+  const isCompleteDiff = (d: unknown): d is MapDiff => {
+    if (!d || typeof d !== 'object') return false;
+    const diff = d as Record<string, unknown>;
 
-      // If we have partial/complete replacement results, merge them
-      if (replacementObject?.nodes && replacementNodeIds.length > 0) {
-        if (replacementNodeIds.length === 1) {
-          // Single node replacement
-          if (replacementObject.nodes[0]) {
-            return replaceNodeInMap(
-              baseMap,
-              replacementNodeIds[0],
-              replacementObject.nodes[0] as MapType
-            );
-          }
-        } else if (replacementNodeIds.length > 1) {
-          // Multiple sibling replacement
-          if (replacementObject.nodes.length > 0) {
-            return replaceSiblingNodesInMap(
-              baseMap,
-              replacementNodeIds,
-              replacementObject.nodes as MapType[]
-            );
-          }
+    // Delete diff only needs the 'delete' field
+    if ('delete' in diff && typeof diff.delete === 'string') {
+      return true;
+    }
+
+    // Add and update diffs need a complete node with title
+    if ('add' in diff || 'update' in diff) {
+      const node = diff.node as Record<string, unknown> | undefined;
+      if (!node || typeof node !== 'object') return false;
+      // Node must have at least a title to be considered complete
+      if (typeof node.title !== 'string') return false;
+      return true;
+    }
+
+    return false;
+  };
+
+  // Parse streaming report text into map, fallback to database map
+  const currentMap = currentProject?.map as MapType | undefined;
+  const map = useMemo(() => {
+    // During diff application, apply streaming diffs to the base map
+    if (isDiffing && currentMap) {
+      // Apply diffs received so far (filter out incomplete ones during streaming)
+      if (diffObject?.diffs && diffObject.diffs.length > 0) {
+        const completeDiffs = diffObject.diffs.filter(isCompleteDiff);
+        if (completeDiffs.length > 0) {
+          return applyDiffs(currentMap, completeDiffs);
         }
       }
 
-      // No replacement data yet, use base map as-is to maintain stability
-      return baseMap;
+      // No diffs yet, use base map as-is to maintain stability
+      return currentMap;
     }
 
-    // Not replacing: priority is streaming report text > database
+    // Not applying diffs: priority is streaming report text > database
     if (reportText) {
       return parseReportToMap(reportText);
     }
-    return currentProject?.map || null;
-  }, [reportText, currentProject?.map, isReplacingNodes, replacementObject, replacementNodeIds]);
+    return currentMap || null;
+  }, [reportText, currentMap, isDiffing, diffObject]);
 
   const validateAndAddFiles = (files: File[]) => {
     setFileError("");
@@ -308,14 +277,8 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     }
 
     if (selectedNodes.length > 0 && userInput.trim() && map) {
-      // Node replacement mode
-      const nodeIds = selectedNodes.map(n => n.id);
-      const filteredIds = filterRedundantNodes(nodeIds);
-
-      setIsReplacingNodes(true);
-      setReplacementNodeIds(filteredIds);
-
-      submitReplacement({
+      // Diff mode - send selected nodes and prompt to generate diffs
+      submitDiffs({
         projectId,
         prompt: userInput,
         selectedNodes: selectedNodes,
@@ -323,7 +286,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
       });
 
       setUserInput("");
-      // Don't clear selectedNodes yet - we need them for the streaming update
+      // Don't clear selectedNodes yet - we need them for UI feedback during streaming
     } else if (userInput.trim() || selectedFiles.length > 0) {
       // Other functionality (file upload, etc.)
       console.log("Send:", { userInput, selectedFiles, selectedNodes });
@@ -331,7 +294,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
       setSelectedFiles([]);
       setSelectedNodes([]);
     }
-  }, [userInput, selectedNodes, selectedFiles, map, projectId, submitReplacement]);
+  }, [userInput, selectedNodes, selectedFiles, map, projectId, submitDiffs]);
 
   if (isLoading || error) {
     return null;

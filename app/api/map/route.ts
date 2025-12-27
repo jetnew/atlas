@@ -2,13 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { streamObject } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { createClient } from '@/lib/supabase/server';
-import { mapSchema, Map as MapType } from '@/lib/schemas/map';
+import { mapSchema, mapDiffSchema, Map as MapType, MapDiff } from '@/lib/schemas/map';
 import { z } from 'zod';
-import {
-  filterRedundantNodes,
-  replaceNodeInMap,
-  replaceSiblingNodesInMap,
-} from '@/lib/mapUtils';
+import { applyDiffs } from '@/lib/mapUtils';
 
 // Request body schema
 const requestSchema = z.object({
@@ -40,7 +36,7 @@ async function saveMapToDatabase(
   console.log("Map saved to Supabase successfully");
 }
 
-function generateMap({
+function generateMapDiffs({
   prompt,
   selectedNodes,
   currentMap,
@@ -55,15 +51,7 @@ function generateMap({
   questions: { question: string; options: string[] }[];
   answers: Record<string, string>;
 }) {
-  // Filter out redundant child nodes (if parent is selected, children are ignored)
-  const nodeIds = selectedNodes.map(n => n.id);
-  const filteredIds = filterRedundantNodes(nodeIds);
-  const filteredNodes = selectedNodes.filter(n => filteredIds.includes(n.id));
-
-  const isSingleNode = filteredNodes.length === 1;
-
-  console.log(`Processing ${filteredNodes.length} node(s) for replacement`);
-  const nodeCount = filteredNodes.length;
+  console.log(`Processing ${selectedNodes.length} node(s) for diff generation`);
 
   const summariesText = summaries.filter(summary => summary.length > 0).join('\n\n');
 
@@ -77,30 +65,41 @@ function generateMap({
     ? `\n\nProject Context:${summariesText ? `\n\nProject Sources (summaries):\n${summariesText}` : ''}${qaContext}`
     : '';
 
-  const systemPrompt = `You are project map assistant, tasked to update the project map based on the user's selection and prompt. You are given the the project context, which includes the user's original project prompt, summaries of the sources attached by the user for the project, and the clarifications (questions and answers) to the user's prompt. You are provided the original project map, and the user's selection of nodes to be updated. Your goal is to update the project map based on the user's prompt, with respect to only the nodes selected by the user.
+  const systemPrompt = `You are a project map assistant. Your task is to generate diff operations to update the project map based on the user's selection and prompt.
 
-All nodes that the user selects will be removed from the original project map. You should generate new nodes that will replace the selected nodes. In particular, you must only update the nodes selected by the user. If both a parent node and its child node is selected, you should only generate a single node that will replace the parent node, which may have new children that can replace the selected child node.
-  
 Project Context:
 ${projectContext}
 
-Original Project Map:
+Current Project Map:
 ${JSON.stringify(currentMap, null, 2)}
 
-User-selected Nodes:
-${selectedNodes.map(node => `- "${node.label}"${node.text ? `: ${node.text}` : ''}`).join('\n')}
-
-Nodes to Generate (after filtering redundant children):
-${filteredNodes.map(node => `- "${node.label}"${node.text ? `: ${node.text}` : ''}`).join('\n')}
-
-Note: When a parent node and its child nodes are both selected, only the parent node needs to be generated since generating the parent will include new children that replace the selected child nodes.
+User-selected Nodes (with their IDs):
+${selectedNodes.map(node => `- ID: "${node.id}" | Title: "${node.label}"${node.text ? ` | Text: ${node.text}` : ''}`).join('\n')}
 
 User Prompt: ${prompt}
 
-Generate exactly ${nodeCount} new node(s) with the following structure that will directly replace the ${nodeCount} node(s) listed above in "Nodes to Generate":
-- title: The heading/label for the node
-- text: Optional descriptive text for the node
-- sections: Optional array of child nodes (recursive structure)
+Generate an array of diff operations to modify the map. Each diff is one of:
+
+1. ADD - Insert a new node at a position:
+   { "add": "<target-id>", "node": { "title": "...", "text": "...", "sections": [...] } }
+   - The "add" field is the target position ID (e.g., "root-1-3" means insert as the 4th child of root-1)
+   - IDs use path-based format: "root" is the root, "root-0" is first child, "root-0-2" is third child of first child
+
+2. DELETE - Remove a node (and all its children):
+   { "delete": "<node-id>" }
+   - The "delete" field is the ID of the node to remove
+
+3. UPDATE - Replace a node entirely:
+   { "update": "<node-id>", "node": { "title": "...", "text": "...", "sections": [...] } }
+   - The "update" field is the ID of the node to replace
+   - The "node" field contains the complete replacement
+
+IMPORTANT:
+- Diffs are applied in the order you generate them
+- If you delete a node (e.g., "root-1"), subsequent nodes shift (root-2 becomes root-1)
+- Account for index shifting when generating multiple diffs
+- Only modify nodes related to the user's selection and prompt
+- The node structure is: { title: string, text?: string, sections?: node[] }
 `;
 
   console.log("System prompt:", systemPrompt);
@@ -108,10 +107,10 @@ Generate exactly ${nodeCount} new node(s) with the following structure that will
   const result = streamObject({
     model: openai('gpt-5.2'),
     prompt: systemPrompt,
-    schema: z.object({ nodes: z.array(mapSchema) }),
+    schema: z.object({ diffs: z.array(mapDiffSchema) }),
   });
 
-  return { result, filteredIds, isSingleNode };
+  return result;
 }
 
 export async function POST(request: NextRequest) {
@@ -173,7 +172,7 @@ export async function POST(request: NextRequest) {
     const questions: Array<{ question: string; options: string[] }> = project?.questions || [];
     const answers: Record<string, string> = project?.answers || {};
 
-    const { result, filteredIds, isSingleNode } = generateMap({
+    const result = generateMapDiffs({
       prompt,
       selectedNodes,
       currentMap,
@@ -185,25 +184,10 @@ export async function POST(request: NextRequest) {
     // Save to database after stream completes
     (async () => {
       try {
-        const { nodes } = await result.object;
+        const { diffs } = await result.object;
 
-        if (nodes && nodes.length > 0) {
-          let updatedMap: MapType;
-
-          if (isSingleNode) {
-            updatedMap = replaceNodeInMap(
-              currentMap,
-              filteredIds[0],
-              nodes[0]
-            );
-          } else {
-            updatedMap = replaceSiblingNodesInMap(
-              currentMap,
-              filteredIds,
-              nodes
-            );
-          }
-
+        if (diffs && diffs.length > 0) {
+          const updatedMap = applyDiffs(currentMap, diffs as MapDiff[]);
           await saveMapToDatabase(projectId, updatedMap, supabase);
         }
       } catch (error) {

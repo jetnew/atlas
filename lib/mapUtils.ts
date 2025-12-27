@@ -1,4 +1,4 @@
-import { Map } from '@/lib/schemas/map';
+import { Map, MapDiff, AddDiff, DeleteDiff, UpdateDiff } from '@/lib/schemas/map';
 
 /**
  * Extracts the title from a Map object.
@@ -191,19 +191,6 @@ export function getNodeIndex(nodeId: string): number {
 }
 
 /**
- * Filter selected nodes to remove redundant children
- * If a parent is selected, its children are not needed
- */
-export function filterRedundantNodes(nodeIds: string[]): string[] {
-  return nodeIds.filter(nodeId => {
-    // Check if any other selected node is an ancestor of this one
-    return !nodeIds.some(otherId =>
-      otherId !== nodeId && isAncestor(otherId, nodeId)
-    );
-  });
-}
-
-/**
  * Get a node from the map tree by its path-based ID
  */
 export function getNodeByPath(map: Map, nodeId: string): Map | null {
@@ -261,38 +248,118 @@ export function replaceNodeInMap(
 }
 
 /**
- * Replace multiple sibling nodes with new nodes
- * nodeIds should all be siblings (same parent)
- * Replaces the range of selected nodes with the replacements
+ * Apply a single diff to the map
+ * Detects diff type by checking which key exists (add/delete/update)
  */
-export function replaceSiblingNodesInMap(
-  map: Map,
-  nodeIds: string[],
-  replacements: Map[]
-): Map {
-  if (nodeIds.length === 0) return map;
+export function applyDiff(map: Map, diff: MapDiff): Map {
+  if ('add' in diff) {
+    return applyAddDiff(map, diff as AddDiff);
+  } else if ('delete' in diff) {
+    return applyDeleteDiff(map, diff as DeleteDiff);
+  } else if ('update' in diff) {
+    return applyUpdateDiff(map, diff as UpdateDiff);
+  }
+  return map;
+}
 
+/**
+ * Apply an array of diffs to the map in order
+ */
+export function applyDiffs(map: Map, diffs: MapDiff[]): Map {
+  return diffs.reduce((currentMap, diff) => applyDiff(currentMap, diff), cloneMap(map));
+}
+
+/**
+ * Ensure a node has all required fields with defaults
+ */
+function normalizeNode(node: Map): Map {
+  return {
+    title: node.title || '',
+    text: node.text || '',
+    sections: node.sections || [],
+  };
+}
+
+/**
+ * Apply an add diff - insert a new node at the specified position
+ */
+function applyAddDiff(map: Map, diff: AddDiff): Map {
   const newMap = cloneMap(map);
-  const parentId = getParentId(nodeIds[0]);
+  const parentId = getParentId(diff.add);
+  const insertIndex = getNodeIndex(diff.add);
+  const normalizedNode = normalizeNode(diff.node);
 
-  if (!parentId) {
-    // Handle root replacement
-    if (nodeIds.includes('root')) {
-      return replacements[0] || map;
+  // Handle adding to root's sections
+  if (parentId === null || parentId === 'root') {
+    if (!newMap.sections) {
+      newMap.sections = [];
+    }
+    // Insert at the specified index, or append if index is beyond current length
+    const safeIndex = Math.min(insertIndex, newMap.sections.length);
+    newMap.sections.splice(safeIndex, 0, normalizedNode);
+    return newMap;
+  }
+
+  const parent = getNodeByPath(newMap, parentId);
+  if (!parent) {
+    // Parent doesn't exist, skip this diff
+    return newMap;
+  }
+
+  if (!parent.sections) {
+    parent.sections = [];
+  }
+
+  // Insert at the specified index, or append if index is beyond current length
+  const safeIndex = Math.min(insertIndex, parent.sections.length);
+  parent.sections.splice(safeIndex, 0, normalizedNode);
+
+  return newMap;
+}
+
+/**
+ * Apply a delete diff - remove a node (cascades to children automatically)
+ */
+function applyDeleteDiff(map: Map, diff: DeleteDiff): Map {
+  const newMap = cloneMap(map);
+
+  // Handle deleting root - clear sections but keep root structure
+  if (diff.delete === 'root') {
+    newMap.sections = [];
+    return newMap;
+  }
+
+  const parentId = getParentId(diff.delete);
+  const index = getNodeIndex(diff.delete);
+
+  if (parentId === null) {
+    return newMap;
+  }
+
+  // Handle deleting from root's sections
+  if (parentId === 'root') {
+    if (newMap.sections && index >= 0 && index < newMap.sections.length) {
+      newMap.sections.splice(index, 1);
     }
     return newMap;
   }
 
   const parent = getNodeByPath(newMap, parentId);
-  if (!parent || !parent.sections) return newMap;
+  if (!parent || !parent.sections) {
+    return newMap;
+  }
 
-  // Get indices and sort them
-  const indices = nodeIds.map(getNodeIndex).sort((a, b) => a - b);
-  const minIndex = indices[0];
-  const maxIndex = indices[indices.length - 1];
-
-  // Remove the selected nodes and insert replacements
-  parent.sections.splice(minIndex, maxIndex - minIndex + 1, ...replacements);
+  if (index >= 0 && index < parent.sections.length) {
+    parent.sections.splice(index, 1);
+  }
 
   return newMap;
+}
+
+/**
+ * Apply an update diff - replace a node entirely
+ */
+function applyUpdateDiff(map: Map, diff: UpdateDiff): Map {
+  const normalizedNode = normalizeNode(diff.node);
+  return replaceNodeInMap(map, diff.update, normalizedNode);
 }
