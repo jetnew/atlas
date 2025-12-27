@@ -247,6 +247,47 @@ export default function Map({ report, onSelectionChange }: MapProps) {
           opacity: 0;
           pointer-events: none;
         }
+        .react-flow__background {
+          background-image:
+            linear-gradient(to right, #e7e5e4 1px, transparent 1px),
+            linear-gradient(to bottom, #e7e5e4 1px, transparent 1px);
+          background-size: 20px 20px;
+          background-position: 0 0, 0 0;
+          mask-image:
+            repeating-linear-gradient(
+              to right,
+              black 0px,
+              black 3px,
+              transparent 3px,
+              transparent 8px
+            ),
+            repeating-linear-gradient(
+              to bottom,
+              black 0px,
+              black 3px,
+              transparent 3px,
+              transparent 8px
+            ),
+            radial-gradient(ellipse 100% 80% at 50% 100%, #000 50%, transparent 90%);
+          -webkit-mask-image:
+            repeating-linear-gradient(
+              to right,
+              black 0px,
+              black 3px,
+              transparent 3px,
+              transparent 8px
+            ),
+            repeating-linear-gradient(
+              to bottom,
+              black 0px,
+              black 3px,
+              transparent 3px,
+              transparent 8px
+            ),
+            radial-gradient(ellipse 100% 80% at 50% 100%, #000 50%, transparent 90%);
+          mask-composite: intersect;
+          -webkit-mask-composite: source-in;
+        }
       `}</style>
     </div>
   );

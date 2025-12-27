@@ -30,6 +30,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import { NODE_COLORS } from "@/lib/constants";
+import { BackgroundGridBottom } from "@/components/ui/background-grid";
 
 interface ProjectCardProps {
   project: Project;
@@ -141,8 +142,9 @@ function AppContent() {
   }, [listProjects]);
 
   return (
-    <div className="[--header-height:calc(--spacing(12))]">
-      <SidebarProvider className="flex flex-col min-h-screen">
+    <div className="[--header-height:calc(--spacing(12))] relative">
+      <BackgroundGridBottom />
+      <SidebarProvider className="flex flex-col min-h-screen relative z-10">
         <Header />
         <main className="container mx-auto px-4 py-8 max-w-7xl flex-1">
           <div className="flex justify-between items-center mb-4">

@@ -5,6 +5,7 @@ import { useCompletion, experimental_useObject as useObject } from "@ai-sdk/reac
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PanelLeftIcon, PanelRightIcon, Plus as IconPlus, FileText, X as XIcon, ArrowUpIcon, BoxIcon } from "lucide-react";
+import { BackgroundGridBottom } from "@/components/ui/background-grid";
 import { useProject } from "@/components/ProjectContext";
 import { mapDiffSchema, Map as MapType, MapDiff } from "@/lib/schemas/map";
 import { z } from "zod";
@@ -322,6 +323,7 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     <div
       className={`absolute inset-0 flex flex-col overflow-hidden transition-[left,right] duration-200 ease-linear`}
     >
+      <BackgroundGridBottom />
       {!leftSidebarOpen && (
         <Button
           variant="ghost"
