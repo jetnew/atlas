@@ -116,6 +116,9 @@ export default function MapPanel({ projectId }: MapPanelProps) {
         });
       }
     },
+    onError: (error) => {
+      console.error('Report generation error:', error);
+    },
   });
 
   // Hook: Replace selected nodes with AI-generated content
