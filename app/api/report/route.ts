@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { createClient } from '@/lib/supabase/server';
-import { parseReportToMap } from '@/lib/formatMap';
+import { parseReportToMap } from '@/lib/mapUtils';
 
 async function generateReport(
   prompt: string,

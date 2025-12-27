@@ -4,7 +4,7 @@ import { Profile } from "@/components/Profile";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { useProject } from "@/components/ProjectContext";
-import { getMapTitle } from "@/lib/formatMap";
+import { getMapTitle } from "@/lib/mapUtils";
 
 export default function Header() {
   const { currentProject } = useProject();

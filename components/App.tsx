@@ -9,7 +9,7 @@ import { Project } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Ellipsis, Plus } from "lucide-react";
-import { getMapTitle } from "@/lib/formatMap";
+import { getMapTitle } from "@/lib/mapUtils";
 import {
   DropdownMenu,
   DropdownMenuContent,

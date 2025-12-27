@@ -7,9 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { PanelLeftIcon, PanelRightIcon, Plus as IconPlus, FileText, X as XIcon, ArrowUpIcon, BoxIcon } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
 import { useMap } from "@/components/MapContext";
-import { parseReportToMap } from "@/lib/formatMap";
 import { mapReplacementResponseSchema, Map as MapType } from "@/lib/schemas/map";
 import {
+  parseReportToMap,
   filterRedundantNodes,
   replaceNodeInMap,
   replaceSiblingNodesInMap,
