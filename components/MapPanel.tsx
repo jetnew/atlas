@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PanelLeftIcon, PanelRightIcon, Plus as IconPlus, FileText, X as XIcon, ArrowUpIcon, BoxIcon } from "lucide-react";
 import { useProject } from "@/components/ProjectContext";
-import { useMap } from "@/components/MapContext";
 import { mapReplacementResponseSchema, Map as MapType } from "@/lib/schemas/map";
 import {
   parseReportToMap,
@@ -29,7 +28,6 @@ interface MapPanelProps {
 
 export default function MapPanel({ projectId }: MapPanelProps) {
   const { isLoading, error, getProjectData, currentProject, setCurrentProject } = useProject();
-  const { setIsGenerating, setRegenerate } = useMap();
   const reportGeneratedRef = useRef(false);
   const generateReportRef = useRef<(prompt: string) => void>(() => { });
   const currentProjectRef = useRef(currentProject);
@@ -251,11 +249,6 @@ export default function MapPanel({ projectId }: MapPanelProps) {
     return currentProject?.map || null;
   }, [reportText, currentProject?.map, isReplacingNodes, replacementObject, replacementNodeIds]);
 
-  const handleRegenerate = useCallback(() => {
-    reportGeneratedRef.current = false;
-    generateReportRef.current('');
-  }, []);
-
   const validateAndAddFiles = (files: File[]) => {
     setFileError("");
 
@@ -335,17 +328,6 @@ export default function MapPanel({ projectId }: MapPanelProps) {
       setSelectedNodes([]);
     }
   }, [userInput, selectedNodes, selectedFiles, map, projectId, submitReplacement]);
-
-  // Register regenerate function with context
-  useEffect(() => {
-    setRegenerate(handleRegenerate);
-    return () => setRegenerate(null);
-  }, [handleRegenerate, setRegenerate]);
-
-  // Sync isGenerating state with context
-  useEffect(() => {
-    setIsGenerating(isGeneratingReport || isReplacingLoading);
-  }, [isGeneratingReport, isReplacingLoading, setIsGenerating]);
 
   if (isLoading || error) {
     return null;
