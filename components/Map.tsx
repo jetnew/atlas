@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useEffect, useCallback, useRef } from "react";
-import { stratify, tree } from "d3-hierarchy";
+import { useMemo, useCallback, useLayoutEffect, useRef, useEffect } from "react";
+import { flextree } from "d3-flextree";
 import {
   ReactFlow,
   Node,
@@ -10,6 +10,10 @@ import {
   useNodesState,
   useEdgesState,
   OnSelectionChangeFunc,
+  useReactFlow,
+  useNodesInitialized,
+  ReactFlowProvider,
+  useNodes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Map as MapType } from "@/lib/schemas/map";
@@ -28,12 +32,21 @@ interface FlatNode {
   hasChildren: boolean;
   isRoot: boolean;
   colorIndex: number;
+  className: string;
 }
 
-const NODE_WIDTH = 300;
-const NODE_HEIGHT = 120;
-const HORIZONTAL_SPACING = 20;
-const VERTICAL_SPACING = 120;
+interface TreeData {
+  id: string;
+  width: number;
+  height: number;
+  children?: TreeData[];
+}
+
+const FALLBACK_WIDTH = 300;
+const FALLBACK_HEIGHT = 80;
+const HORIZONTAL_SPACING = 40;
+const VERTICAL_SPACING = 80;
+const PADDING = 20;
 
 export interface SelectedNode {
   id: string;
@@ -46,10 +59,68 @@ interface MapProps {
   onSelectionChange?: (nodes: SelectedNode[]) => void;
 }
 
-export default function Map({ report, onSelectionChange }: MapProps) {
-  const { initialNodes, initialEdges } = useMemo(() => {
+// Get measured size from React Flow node (v12 uses node.measured.*)
+function getMeasuredSize(node: Node) {
+  return {
+    width: node.measured?.width ?? FALLBACK_WIDTH,
+    height: node.measured?.height ?? FALLBACK_HEIGHT,
+  };
+}
+
+// Build a nested tree structure from flat nodes for d3-flextree
+function buildNestedTree(
+  flatNodes: FlatNode[],
+  sizeById: globalThis.Map<string, { width: number; height: number }>
+): TreeData {
+  const childrenByParent = new globalThis.Map<string, string[]>();
+
+  for (const n of flatNodes) {
+    const parentId = n.parentId ?? "__VIRTUAL_ROOT__";
+    const children = childrenByParent.get(parentId) ?? [];
+    children.push(n.id);
+    childrenByParent.set(parentId, children);
+  }
+
+  const makeNode = (id: string): TreeData => {
+    const size = sizeById.get(id) ?? { width: FALLBACK_WIDTH, height: FALLBACK_HEIGHT };
+    const childIds = childrenByParent.get(id) ?? [];
+    const children = childIds.length > 0 ? childIds.map(makeNode) : undefined;
+
+    return {
+      id,
+      width: size.width,
+      height: size.height,
+      children,
+    };
+  };
+
+  const rootChildren = childrenByParent.get("__VIRTUAL_ROOT__") ?? [];
+  if (rootChildren.length === 1) {
+    return makeNode(rootChildren[0]);
+  }
+
+  // Multiple roots: add a virtual root (not rendered)
+  return {
+    id: "__VIRTUAL_ROOT__",
+    width: 1,
+    height: 1,
+    children: rootChildren.map(makeNode),
+  };
+}
+
+// Inner component that uses React Flow hooks
+function MapInner({
+  report,
+  onSelectionChange,
+}: MapProps) {
+  const { setNodes } = useReactFlow();
+  const rfNodes = useNodes();
+  const nodesInitialized = useNodesInitialized({ includeHiddenNodes: false });
+
+  // Build flat nodes and edges from report data
+  const { flatNodes, initialEdges, initialNodes } = useMemo(() => {
     if (!report) {
-      return { initialNodes: [], initialEdges: [] };
+      return { flatNodes: [], initialEdges: [], initialNodes: [] };
     }
 
     const flatNodes: FlatNode[] = [];
@@ -62,11 +133,11 @@ export default function Map({ report, onSelectionChange }: MapProps) {
       parentId: string | null,
       isRoot: boolean,
       colorIndex: number,
-      depth: number,
       path: string
-    ): string => {
+    ): void => {
       const currentId = path;
       const hasChildren = node.sections && node.sections.length > 0;
+      const colorClasses = NODE_COLORS[colorIndex];
 
       flatNodes.push({
         id: currentId,
@@ -76,6 +147,7 @@ export default function Map({ report, onSelectionChange }: MapProps) {
         hasChildren,
         isRoot,
         colorIndex,
+        className: `${colorClasses} border-2 rounded-lg`,
       });
 
       if (parentId) {
@@ -97,109 +169,151 @@ export default function Map({ report, onSelectionChange }: MapProps) {
             ? (index + 1) % NODE_COLORS.length
             : colorIndex;
           const childPath = `${path}-${index}`;
-          processNode(child, currentId, false, childColorIndex, depth + 1, childPath);
+          processNode(child, currentId, false, childColorIndex, childPath);
         });
       }
-
-      return currentId;
     };
 
     // Process the root node with path-based ID
-    processNode(report, null, true, 0, 0, "root");
+    processNode(report, null, true, 0, "root");
 
-    // Build hierarchy using d3-hierarchy stratify
-    const root = stratify<FlatNode>()
-      .id((d) => d.id)
-      .parentId((d) => d.parentId)(flatNodes);
+    // Create initial nodes with placeholder positions (will be laid out after measurement)
+    const initialNodes: Node[] = flatNodes.map((flat) => ({
+      id: flat.id,
+      data: {
+        label: flat.label,
+        text: flat.text,
+        hasChildren: flat.hasChildren,
+        isRoot: flat.isRoot,
+      },
+      position: { x: 0, y: 0 },
+      type: "map",
+      className: flat.className,
+    }));
 
-    // Create tree layout with dynamic separation based on subtree size
-    const treeLayout = tree<FlatNode>()
-      .nodeSize([NODE_WIDTH + HORIZONTAL_SPACING, NODE_HEIGHT + VERTICAL_SPACING])
-      .separation((a, b) => {
-        return (a.leaves().length + b.leaves().length) / 2
-      });
-
-    // Apply layout
-    treeLayout(root);
-
-    // Convert to ReactFlow nodes with computed positions
-    const nodes: Node[] = root.descendants().map((d) => {
-      const colorClasses = NODE_COLORS[d.data.colorIndex];
-      return {
-        id: d.data.id,
-        data: {
-          label: d.data.label,
-          text: d.data.text,
-          hasChildren: d.data.hasChildren,
-          isRoot: d.data.isRoot,
-        },
-        position: { x: d.x!, y: d.y! },
-        type: "map",
-        className: `${colorClasses} border-2 rounded-lg`,
-      };
-    });
-
-    return { initialNodes: nodes, initialEdges: edges };
+    return { flatNodes, initialEdges: edges, initialNodes };
   }, [report]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodesState, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   // Track previous node IDs to detect structural changes
   const prevNodeIdsRef = useRef<Set<string>>(new Set());
-  const rafRef = useRef<number | null>(null);
+  const hasLaidOutRef = useRef(false);
 
-  // Sync nodes and edges when initialNodes/initialEdges change
-  // Debounce using requestAnimationFrame to prevent overwhelming ReactFlow
+  // Sync nodes and edges when data changes (before layout)
   useEffect(() => {
-    // Detect if structure changed (nodes added/removed)
-    const currentIds = new Set(initialNodes.map(n => n.id));
+    const currentIds = new Set(initialNodes.map((n) => n.id));
     const prevIds = prevNodeIdsRef.current;
     const structureChanged =
       currentIds.size !== prevIds.size ||
-      initialNodes.some(n => !prevIds.has(n.id));
+      initialNodes.some((n) => !prevIds.has(n.id));
 
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-    }
-
-    rafRef.current = requestAnimationFrame(() => {
-      if (structureChanged) {
-        // Structure changed - use new positions from layout
-        setNodes(initialNodes);
-        setEdges(initialEdges);
-      } else {
-        // Only content changed - preserve positions, update data only
-        setNodes(currentNodes => {
-          const nodeById: Record<string, Node> = {};
-          for (const n of initialNodes) {
-            nodeById[n.id] = n;
+    if (structureChanged) {
+      // Structure changed - reset nodes (positions will be fixed by layout)
+      setNodesState(initialNodes);
+      setEdges(initialEdges);
+      hasLaidOutRef.current = false;
+    } else {
+      // Only content changed - update data but preserve positions
+      setNodesState((currentNodes) => {
+        const nodeById: Record<string, Node> = {};
+        for (const n of initialNodes) {
+          nodeById[n.id] = n;
+        }
+        return currentNodes.map((node) => {
+          const newNode = nodeById[node.id];
+          if (newNode) {
+            return {
+              ...node,
+              data: newNode.data,
+              className: newNode.className,
+            };
           }
-          return currentNodes.map(node => {
-            const newNode = nodeById[node.id];
-            if (newNode) {
-              return {
-                ...node,
-                data: newNode.data,
-                className: newNode.className,
-              };
-            }
-            return node;
-          });
+          return node;
         });
-        setEdges(initialEdges);
-      }
-      prevNodeIdsRef.current = currentIds;
-      rafRef.current = null;
+      });
+      setEdges(initialEdges);
+    }
+    prevNodeIdsRef.current = currentIds;
+  }, [initialNodes, initialEdges, setNodesState, setEdges]);
+
+  // Build size map from measured React Flow nodes
+  const sizeById = useMemo(() => {
+    const map = new globalThis.Map<string, { width: number; height: number }>();
+    for (const node of rfNodes) {
+      map.set(node.id, getMeasuredSize(node));
+    }
+    return map;
+  }, [rfNodes]);
+
+  // Apply flextree layout after nodes are measured
+  useLayoutEffect(() => {
+    if (!nodesInitialized || flatNodes.length === 0) return;
+
+    const treeData = buildNestedTree(flatNodes, sizeById);
+
+    // Create flextree layout with variable node sizes
+    const layout = flextree<TreeData>({
+      children: (d) => d.children,
+      nodeSize: (node) => [
+        node.data.width + HORIZONTAL_SPACING,
+        node.data.height + VERTICAL_SPACING,
+      ],
+      spacing: 0,
     });
 
-    return () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  }, [initialNodes, initialEdges, setNodes, setEdges]);
+    const root = layout.hierarchy(treeData);
+    layout(root);
+
+    // Build position map (flextree: x is center, y is top for vertical layout)
+    const posById = new globalThis.Map<string, { xCenter: number; yTop: number }>();
+    root.each((node) => {
+      posById.set(node.data.id, { xCenter: node.x, yTop: node.y });
+    });
+
+    // Normalize to start near (0,0)
+    let minX = Infinity;
+    let minY = Infinity;
+
+    for (const [id, pos] of posById) {
+      if (id === "__VIRTUAL_ROOT__") continue;
+      const size = sizeById.get(id) ?? { width: FALLBACK_WIDTH, height: FALLBACK_HEIGHT };
+      minX = Math.min(minX, pos.xCenter - size.width / 2);
+      minY = Math.min(minY, pos.yTop);
+    }
+
+    const shiftX = (Number.isFinite(minX) ? -minX : 0) + PADDING;
+    const shiftY = (Number.isFinite(minY) ? -minY : 0) + PADDING;
+
+    // Apply positions to React Flow nodes
+    setNodes((prev) => {
+      let changed = false;
+
+      const next = prev.map((node) => {
+        const pos = posById.get(node.id);
+        if (!pos) return node;
+
+        const size = getMeasuredSize(node);
+
+        // Convert flextree center-based x to top-left position
+        const x = pos.xCenter - size.width / 2 + shiftX;
+        const y = pos.yTop + shiftY;
+
+        // Only update if position actually changed (avoid update loops)
+        if (Math.abs(node.position.x - x) > 0.5 || Math.abs(node.position.y - y) > 0.5) {
+          changed = true;
+          return { ...node, position: { x, y } };
+        }
+
+        return node;
+      });
+
+      return changed ? next : prev;
+    });
+
+    hasLaidOutRef.current = true;
+  }, [nodesInitialized, flatNodes, sizeById, setNodes]);
 
   const handleSelectionChange: OnSelectionChangeFunc = useCallback(
     ({ nodes: selectedNodes }) => {
@@ -216,13 +330,11 @@ export default function Map({ report, onSelectionChange }: MapProps) {
   );
 
   if (!report) {
-    return (
-      null
-    );
+    return null;
   }
 
   return (
-    <div className="w-full h-full">
+    <>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -240,8 +352,7 @@ export default function Map({ report, onSelectionChange }: MapProps) {
         proOptions={{
           hideAttribution: true,
         }}
-      >
-      </ReactFlow>
+      />
       <style jsx global>{`
         .react-flow__handle {
           opacity: 0;
@@ -289,6 +400,21 @@ export default function Map({ report, onSelectionChange }: MapProps) {
           -webkit-mask-composite: source-in;
         }
       `}</style>
+    </>
+  );
+}
+
+// Main component wraps with ReactFlowProvider so inner component can use hooks
+export default function Map({ report, onSelectionChange }: MapProps) {
+  if (!report) {
+    return null;
+  }
+
+  return (
+    <div className="w-full h-full">
+      <ReactFlowProvider>
+        <MapInner report={report} onSelectionChange={onSelectionChange} />
+      </ReactFlowProvider>
     </div>
   );
 }
