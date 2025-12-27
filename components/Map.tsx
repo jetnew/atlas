@@ -10,10 +10,8 @@ import {
   useNodesState,
   useEdgesState,
   OnSelectionChangeFunc,
-  useReactFlow,
   useNodesInitialized,
   ReactFlowProvider,
-  useNodes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Map as MapType } from "@/lib/schemas/map";
@@ -113,8 +111,6 @@ function MapInner({
   report,
   onSelectionChange,
 }: MapProps) {
-  const { setNodes } = useReactFlow();
-  const rfNodes = useNodes();
   const nodesInitialized = useNodesInitialized({ includeHiddenNodes: false });
 
   // Build flat nodes and edges from report data
@@ -194,7 +190,7 @@ function MapInner({
     return { flatNodes, initialEdges: edges, initialNodes };
   }, [report]);
 
-  const [nodes, setNodesState, onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   // Track previous node IDs to detect structural changes
@@ -211,12 +207,12 @@ function MapInner({
 
     if (structureChanged) {
       // Structure changed - reset nodes (positions will be fixed by layout)
-      setNodesState(initialNodes);
+      setNodes(initialNodes);
       setEdges(initialEdges);
       hasLaidOutRef.current = false;
     } else {
       // Only content changed - update data but preserve positions
-      setNodesState((currentNodes) => {
+      setNodes((currentNodes) => {
         const nodeById: Record<string, Node> = {};
         for (const n of initialNodes) {
           nodeById[n.id] = n;
@@ -236,16 +232,16 @@ function MapInner({
       setEdges(initialEdges);
     }
     prevNodeIdsRef.current = currentIds;
-  }, [initialNodes, initialEdges, setNodesState, setEdges]);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   // Build size map from measured React Flow nodes
   const sizeById = useMemo(() => {
     const map = new globalThis.Map<string, { width: number; height: number }>();
-    for (const node of rfNodes) {
+    for (const node of nodes) {
       map.set(node.id, getMeasuredSize(node));
     }
     return map;
-  }, [rfNodes]);
+  }, [nodes]);
 
   // Apply flextree layout after nodes are measured
   useLayoutEffect(() => {
