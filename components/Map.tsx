@@ -206,8 +206,14 @@ function MapInner({
       initialNodes.some((n) => !prevIds.has(n.id));
 
     if (structureChanged) {
-      // Structure changed - reset nodes (positions will be fixed by layout)
-      setNodes(initialNodes);
+      // Structure changed - preserve positions for existing nodes, new nodes get (0,0)
+      setNodes((currentNodes) => {
+        const positionById = new globalThis.Map(currentNodes.map(n => [n.id, n.position]));
+        return initialNodes.map(node => ({
+          ...node,
+          position: positionById.get(node.id) ?? { x: 0, y: 0 },
+        }));
+      });
       setEdges(initialEdges);
       hasLaidOutRef.current = false;
     } else {
