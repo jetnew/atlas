@@ -101,8 +101,6 @@ Generate exactly ${nodeCount} new node(s) with the following structure that will
 - title: The heading/label for the node
 - text: Optional descriptive text for the node
 - sections: Optional array of child nodes (recursive structure)
-
-Whenever possible, opt to minimize the number of leaf nodes generated.
 `;
 
   console.log("System prompt:", systemPrompt);
