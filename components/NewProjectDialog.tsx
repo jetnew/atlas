@@ -22,15 +22,12 @@ import { Input } from "@/components/ui/input";
 import { ArrowUpIcon, Plus as IconPlus, X as XIcon, FileText, ArrowRight, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/components/ProjectContext";
+import { MAX_FILES, MAX_FILE_SIZE, ACCEPTED_FILE_TYPES } from "@/lib/constants";
 
 interface NewProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const MAX_FILES = 10;
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB in bytes
-const ACCEPTED_FILE_TYPES = ".pdf,.docx,.txt,.md,.png,.jpg,.jpeg";
 
 interface Question {
   question: string;

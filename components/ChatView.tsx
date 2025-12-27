@@ -18,6 +18,7 @@ import {
   InputGroupAddon,
   InputGroupButton,
 } from "@/components/ui/input-group";
+import { MAX_FILES, MAX_FILE_SIZE, ACCEPTED_FILE_TYPES } from "@/lib/constants";
 
 function ToggleButton({ onToggle }: { onToggle?: () => void }) {
   const { toggle } = useSidebarToggle();
@@ -30,10 +31,6 @@ function ToggleButton({ onToggle }: { onToggle?: () => void }) {
     </Button>
   );
 }
-
-const MAX_FILES = 10;
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB in bytes
-const ACCEPTED_FILE_TYPES = ".pdf,.docx,.txt,.md,.png,.jpg,.jpeg";
 
 interface ChatViewProps {
   onBack: () => void;

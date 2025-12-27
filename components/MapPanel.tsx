@@ -21,14 +21,11 @@ import {
   InputGroupAddon,
   InputGroupButton,
 } from "@/components/ui/input-group";
+import { MAX_FILES, MAX_FILE_SIZE, ACCEPTED_FILE_TYPES } from "@/lib/constants";
 
 interface MapPanelProps {
   projectId: string;
 }
-
-const MAX_FILES = 10;
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB in bytes
-const ACCEPTED_FILE_TYPES = ".pdf,.docx,.txt,.md,.png,.jpg,.jpeg";
 
 export default function MapPanel({ projectId }: MapPanelProps) {
   const { isLoading, error, getProjectData, currentProject, setCurrentProject } = useProject();

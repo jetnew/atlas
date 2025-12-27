@@ -7,3 +7,8 @@ export const NODE_COLORS = [
   "bg-fuchsia-50 border-fuchsia-100",
 ] as const;
 
+// File upload constants
+export const MAX_FILES = 10;
+export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB in bytes
+export const ACCEPTED_FILE_TYPES = ".pdf,.docx,.txt,.md,.png,.jpg,.jpeg";
+
