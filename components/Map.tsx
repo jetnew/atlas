@@ -230,7 +230,10 @@ export default function Map({ report, onSelectionChange }: MapProps) {
         onEdgesChange={onEdgesChange}
         onSelectionChange={handleSelectionChange}
         nodeTypes={nodeTypes}
-        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        onInit={(instance) => {
+          // Fit view once when ReactFlow initializes
+          instance.fitView({ maxZoom: 1, duration: 0 });
+        }}
         minZoom={0.3}
         maxZoom={3}
         panOnScroll
